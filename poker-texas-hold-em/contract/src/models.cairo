@@ -258,26 +258,56 @@ pub impl HandImpl of HandTrait {
 pub impl GameImpl of GameTrait {
     fn initialize_game(player: Option<Player>, game_params: Option<GameParams>, id: u64) -> Game {
         let mut game: Game = Default::default();
-        match game_params {
-            Option::Some(params) => params,
-            _ => Self::get_default_game_params()
+
+        // Set game parameters (either custom or default)
+        let params = match game_params {
+            Option::Some(params) => {
+                // Validate custom params
+                assert(params.max_no_of_players > 1, 'Min 2 players required');
+                assert(params.big_blind > params.small_blind, 'Invalid blind values');
+                params
+            },
+            Option::None => Self::get_default_game_params()
+        };
+
+        let mut deck = Deck { game_id: id.into(), cards: array![] };
+        deck = DeckTrait::new_deck(ref deck, id.into());
+        DeckTrait::shuffle(ref deck);
+
+        let mut players: Array<Option<Player>> = array![];
+        let mut community_cards: Array<Card> = array![];
+
+        // Add initial player only if provided
+        if let Option::Some(mut initial_player) = player {
+            // Ensure player has enough chips for the game
+            assert(
+                initial_player.chips >= (params.big_blind * 20).into(), 
+                'Insufficient chips'
+            );
+            
+            // Set initial player as dealer
+            initial_player.is_dealer = true;
+            
+            // Lock player to this game
+            initial_player.locked = (true, id);
+            
+            players.append(Option::Some(initial_player));
         }
 
-        // pub struct Game {
-        //     #[key]
-        //     id: u64,
-        //     in_progress: bool,
-        //     has_ended: bool,
-        //     current_round: u8,
-        //     round_in_progress: bool,
-        //     players: Array<Option<Player>>,
-        //     deck: Deck,
-        //     next_player: Option<Player>,
-        //     community_cards: Array<Card>,
-        //     pot: u256,
-        //     params: GameParams
-        // }
-        game
+        // Create game instance
+        Game {
+            id,                             
+            in_progress: false,             
+            has_ended: false,               
+            current_round: 0,               
+            round_in_progress: false,       
+            players,                        
+            deck,                           
+            next_player: Option::None,      
+            community_cards,                
+            pot: 0,                         
+            params,                         
+        }
     }
 
     fn get_default_game_params() -> GameParams {

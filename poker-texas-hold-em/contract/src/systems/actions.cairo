@@ -1,4 +1,5 @@
 use poker::models::{Card, Hand, Deck, Suits, GameMode, GameParams, Player};
+use core::starknet::ContractAddress;
 
 /// TODO: Read the GameREADME.md file to understand the rules of coding this game.
 /// TODO: What should happen when everyone leaves the game? Well, the pot should be
@@ -39,7 +40,7 @@ pub mod actions {
     // use dojo::world::{WorldStorage, WorldStorageTrait};
     use poker::models::{GameId, GameMode, Game, GameParams};
     use poker::models::{GameTrait};
-    use poker::models::{Player, Card, Hand, Deck, GameErrors};
+    use poker::models::{Player, Card, Hand, Deck, GameErrors, Game};
 
     pub const ID: felt252 = 'id';
     pub const MAX_NO_OF_CHIPS: u128 = 100000; /// for test, 1 chip = 10 strk.
@@ -146,8 +147,42 @@ pub mod actions {
             0
         }
 
-        fn _get_dealer() -> Option<Player> {
-            Option::None
+        fn _get_dealer(self: @ContractState, player: @Player) -> Option<Player> {
+            let game_id = self.extract_current_game_id(player);
+
+            let mut world = self.world_default();
+            let mut game: Game = world.read_model(game_id);
+            let players = game.players;
+
+            let mut current_dealer_index: Option<u8> = Option::None;
+            let mut index = 0;
+
+            for Option::Some(player) in players {
+                if player.is_dealer {
+                    current_dealer_index = Option::Some(index);
+                    break;
+                }
+                index += 1;
+            };
+            assert!(current_dealer_index.is_some(), "No dealer found");
+
+            let current_index: u8 = current_dealer_index.unwrap();
+            let total_players: u8 = players.len().into();
+            let next_index: u8 = (current_index + 1) % total_players;
+
+            let current_dealer = (*players.at(next_index.into())).unwrap();
+
+            world.write_model(@game);
+
+            Option::Some(Player {
+                id: current_dealer.id,
+                chips: current_dealer.chips,
+                is_dealer: true,
+                locked: current_dealer.locked,
+                hand: current_dealer.hand,
+                current_bet: current_dealer.current_bet,
+                total_rounds: current_dealer.total_rounds,
+            })
         }
 
         fn _deal_hands(ref players: Array<Player>) { // deal hands for each player in the array

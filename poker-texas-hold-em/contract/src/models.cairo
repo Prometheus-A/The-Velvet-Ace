@@ -11,7 +11,7 @@ use core::hash::{HashStateTrait, HashStateExTrait};
 #[derive(Copy, Drop, Serde, Default, Debug, Introspect, PartialEq)]
 pub struct Card {
     suit: u8,
-    value: u16
+    value: u16,
 }
 
 pub const DEFAULT_NO_OF_CARDS: u8 = 52;
@@ -35,7 +35,7 @@ pub struct GameParams {
     small_blind: u64,
     big_blind: u64,
     no_of_decks: u8,
-    kicker_split: bool
+    kicker_split: bool,
 }
 
 /// id - the game id
@@ -69,7 +69,7 @@ pub struct Game {
     next_player: Option<Player>,
     community_cards: Array<Card>,
     pot: u256,
-    params: GameParams
+    params: GameParams,
 }
 
 pub mod Suits {
@@ -92,7 +92,7 @@ pub struct Deck {
 pub struct Hand {
     #[key]
     player: ContractAddress,
-    cards: Array<Card>
+    cards: Array<Card>,
 }
 
 // the locked variable takes in a tuple of (is_locked, game_id) if the player is already
@@ -107,7 +107,7 @@ pub struct Player {
     current_bet: u256,
     total_rounds: u64,
     locked: (bool, u64),
-    is_dealer: bool
+    is_dealer: bool,
 }
 
 pub mod Royals {
@@ -171,7 +171,7 @@ pub impl HandImpl of HandTrait {
     /// contains the player with the winning hand
     /// this is only possible if the `kick_split` in game_params is true
     fn compare_hands(
-        players: Array<Player>, community_cards: Array<Card>, game_params: GameParams
+        players: Array<Player>, community_cards: Array<Card>, game_params: GameParams,
     ) -> Array<Option<Player>> {
         // for hand comparisons, there should be a kicker
         // kicker there-in that there are times two or more players have the same hand rank, so we
@@ -228,17 +228,15 @@ pub impl HandImpl of HandTrait {
     fn hands_changed(
         ref winning_players: Array<Option<Player>>,
         ref winning_hands: Array<Hand>,
-        hands_changed: bool
+        hands_changed: bool,
     ) {
         if hands_changed {
             assert(winning_hands.len() == winning_players.len(), 'HandImpl panicked.');
-            for _ in 0
-                ..winning_hands
-                    .len() {
-                        // discard all existing objects in `winning_hands`. A clean slate.
-                        winning_hands.pop_front().unwrap();
-                        winning_players.pop_front().unwrap().unwrap();
-                    };
+            for _ in 0..winning_hands.len() {
+                // discard all existing objects in `winning_hands`. A clean slate.
+                winning_hands.pop_front().unwrap();
+                winning_players.pop_front().unwrap().unwrap();
+            };
         }
     }
 
@@ -260,7 +258,7 @@ pub impl GameImpl of GameTrait {
         let mut game: Game = Default::default();
         match game_params {
             Option::Some(params) => params,
-            _ => Self::get_default_game_params()
+            _ => Self::get_default_game_params(),
         }
 
         // pub struct Game {
@@ -287,7 +285,7 @@ pub impl GameImpl of GameTrait {
             small_blind: 10,
             big_blind: 20,
             no_of_decks: 1,
-            kicker_split: true
+            kicker_split: true,
         }
     }
 
@@ -307,14 +305,12 @@ fn generate_random(span: u32) -> u32 {
 pub impl DeckImpl of DeckTrait<Deck> {
     fn new_deck(ref self: Deck, game_id: felt252) -> Deck {
         let mut cards: Array<Card> = array![];
-        for suit in 0_u8
-            ..4_u8 {
-                for value in 1_u16
-                    ..14_u16 {
-                        let card: Card = Card { suit, value };
-                        cards.append(card);
-                    };
+        for suit in 0_u8..4_u8 {
+            for value in 1_u16..14_u16 {
+                let card: Card = Card { suit, value };
+                cards.append(card);
             };
+        };
 
         Deck { game_id, cards }
     }
@@ -323,16 +319,15 @@ pub impl DeckImpl of DeckTrait<Deck> {
         let mut cards: Array<Card> = self.cards;
         let mut new_cards: Array<Card> = array![];
         let mut verifier: Felt252Dict<bool> = Default::default();
-        for _ in cards.len()
-            ..0 {
-                let mut rand = generate_random(DEFAULT_DECK_LENGTH);
-                while !verifier.get(rand.into()) {
-                    rand = generate_random(DEFAULT_DECK_LENGTH);
-                };
-                let temp: Card = *cards.at(rand);
-                new_cards.append(temp);
-                verifier.insert(rand.into(), true);
+        for _ in cards.len()..0 {
+            let mut rand = generate_random(DEFAULT_DECK_LENGTH);
+            while !verifier.get(rand.into()) {
+                rand = generate_random(DEFAULT_DECK_LENGTH);
             };
+            let temp: Card = *cards.at(rand);
+            new_cards.append(temp);
+            verifier.insert(rand.into(), true);
+        };
 
         self.cards = new_cards.clone();
         // deck

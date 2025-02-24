@@ -60,7 +60,7 @@ pub mod actions {
         }
 
         fn join_game(
-            ref self: ContractState, game_id: u64
+            ref self: ContractState, game_id: u64,
         ) { // init a player (check if the player exists, if not, create a new one)
         // call the internal function player_in_game
         // check the number of chips
@@ -119,7 +119,7 @@ pub mod actions {
 
         /// This function makes all assertions on if player is meant to call this function.
         fn before_play(
-            self: @ContractState, caller: ContractAddress
+            self: @ContractState, caller: ContractAddress,
         ) { // Check the chips available in the player model
         // check if player is locked to a session
         // check if the player is even in the game (might have left along the way)...call the below
@@ -129,7 +129,7 @@ pub mod actions {
         /// This function performs all default actions immediately a player joins the game.
         /// May call the previous function. (should not, actually)
         fn player_in_game(
-            self: @ContractState, caller: ContractAddress
+            self: @ContractState, caller: ContractAddress,
         ) { // Check if player is already in the game
         // Check if player is locked (already in a game), check the player struct.
         // The above two checks seem similar, but they differ in the error messages they return.
@@ -137,7 +137,7 @@ pub mod actions {
         }
 
         fn after_play(
-            self: @ContractState, caller: ContractAddress
+            self: @ContractState, caller: ContractAddress,
         ) { // check if player has more chips, prompt 'OUT OF CHIPS'
         }
 
@@ -186,7 +186,7 @@ pub mod actions {
         }
 
         fn _resolve_hands(
-            ref players: Array<Player>
+            ref players: Array<Player>,
         ) { // after each round, resolve all players hands by removing all cards from each hand
         // and perhaps re-initialize and shuffle the deck.
         }

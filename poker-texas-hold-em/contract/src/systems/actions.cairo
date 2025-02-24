@@ -37,6 +37,7 @@ pub mod actions {
     use starknet::{ContractAddress, get_caller_address};
     use dojo::model::{ModelStorage, ModelValueStorage};
     use dojo::event::EventStorage;
+    use dojo::world::WorldStorage;
     // use dojo::world::{WorldStorage, WorldStorageTrait};
     use poker::models::{GameId, GameMode, Game, GameParams};
     use poker::models::{GameTrait};
@@ -148,14 +149,14 @@ pub mod actions {
         }
 
         fn _get_dealer(self: @ContractState, player: @Player) -> Option<Player> {
-            let game_id = self.extract_current_game_id(player);
+            let game_id: u64 = self.extract_current_game_id(player);
 
-            let mut world = self.world_default();
+            let mut world: WorldStorage = self.world_default();
             let mut game: Game = world.read_model(game_id);
-            let players = game.players;
+            let players: Array<Option<Player>> = game.players;
 
             let mut current_dealer_index: Option<u8> = Option::None;
-            let mut index = 0;
+            let mut index: u8 = 0;
 
             for Option::Some(player) in players {
                 if player.is_dealer {
@@ -170,19 +171,15 @@ pub mod actions {
             let total_players: u8 = players.len().into();
             let next_index: u8 = (current_index + 1) % total_players;
 
-            let current_dealer = (*players.at(next_index.into())).unwrap();
+            let mut current_dealer: Player = (*players.at(current_index.into())).unwrap();
+            current_dealer.is_dealer = false;
+
+            let mut next_dealer: Player = (*players.at(next_index.into())).unwrap();
+            next_dealer.is_dealer = true;
 
             world.write_model(@game);
 
-            Option::Some(Player {
-                id: current_dealer.id,
-                chips: current_dealer.chips,
-                is_dealer: true,
-                locked: current_dealer.locked,
-                hand: current_dealer.hand,
-                current_bet: current_dealer.current_bet,
-                total_rounds: current_dealer.total_rounds,
-            })
+            Option::Some(current_dealer)
         }
 
         fn _deal_hands(ref players: Array<Player>) { // deal hands for each player in the array

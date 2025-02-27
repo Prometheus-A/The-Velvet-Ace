@@ -6,6 +6,7 @@ name = "erc721"
 version = "0.1.0"
 dependencies = [
  "openzeppelin",
+ "snforge_std",
 ]
 
 [[package]]
@@ -125,3 +126,18 @@ name = "openzeppelin_utils"
 version = "0.20.0"
 source = "registry+https://scarbs.xyz/"
 checksum = "sha256:44f32d242af1e43982decc49c563e613a9b67ade552f5c3d5cde504e92f74607"
+
+[[package]]
+name = "snforge_scarb_plugin"
+version = "0.33.1"
+source = "registry+https://scarbs.xyz/"
+checksum = "sha256:d67dd5fc8b32ffa4fe071b19be062cea38fec229e23ba466947958506576fa2d"
+
+[[package]]
+name = "snforge_std"
+version = "0.33.0"
+source = "registry+https://scarbs.xyz/"
+checksum = "sha256:f7dc3349f8a6ef4915c93df447a00bd5a53a31129fd0990a00afa0ad31d91b06"
+dependencies = [
+ "snforge_scarb_plugin",
+]

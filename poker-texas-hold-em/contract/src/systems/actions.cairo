@@ -169,6 +169,73 @@ pub mod actions {
             ref players: Array<Player>,
         ) { // after each round, resolve all players hands by removing all cards from each hand
         // and perhaps re-initialize and shuffle the deck.
+            // Extract current game_id from each player (ensuring all players are in the same game)
+            let mut game_id: u64 = 0;
+            let players_len = players.len();
+            
+            assert(players_len > 0, 'Players array is empty');
+            
+            // Extract game_id from the first player for comparison
+            let first_player = players.at(0);
+            let (is_locked, player_game_id) = first_player.locked;
+            
+            // Assert the first player is in a game
+            assert(is_locked, GameErrors::PLAYER_NOT_IN_GAME);
+            assert(player_game_id != 0, GameErrors::PLAYER_NOT_IN_GAME);
+            
+            game_id = player_game_id;
+            
+            // Verify all players are in the same game
+            let mut i: u32 = 1;
+            while i < players_len {
+                let player = players.at(i);
+                let (player_is_locked, player_game_id) = player.locked;
+                
+                // Assert the player is in a game
+                assert(player_is_locked, GameErrors::PLAYER_NOT_IN_GAME);
+                // Assert all players are in the same game
+                assert(player_game_id == game_id, 'Players in different games');
+                
+                i += 1;
+            }
+            
+            // Get the world storage
+            let mut world = self.world_default();
+            
+            // Read the game from the world using game_id
+            let mut game: Game = world.read_model(game_id);
+            
+            // Read and reset the deck from the game
+            let mut deck = game.deck;
+            // Re-initialize the deck with the same game_id
+            deck = DeckImpl::new_deck(ref deck, game_id.into());
+            // Shuffle the deck
+            DeckImpl::shuffle(ref deck);
+            
+            // Update the game's deck
+            game.deck = deck;
+            
+            // Clear each player's hand and update it in the world
+            let mut j: u32 = 0;
+            while j < players_len {
+                // Get player reference and create a mutable copy
+                let mut player = *players.at(j);
+                
+                // Clear the player's hand by creating a new empty hand
+                let player_address = player.id;
+                player.hand = HandTrait::new_hand(player_address);
+                
+                // Update the player in the players array
+                players.set(j, player);
+                
+                // Update the player in the world
+                world.write_model(@player);
+                
+                j += 1;
+            }
+            
+            // Update the game in the world
+            world.write_model(@game);
         }
     }
 }

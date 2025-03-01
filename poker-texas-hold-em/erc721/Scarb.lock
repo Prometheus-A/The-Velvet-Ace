@@ -6,6 +6,7 @@ name = "erc721"
 version = "0.1.0"
 dependencies = [
  "openzeppelin",
+ "snforge_std",
 ]
 
 [[package]]
@@ -125,3 +126,16 @@ name = "openzeppelin_utils"
 version = "0.20.0"
 source = "registry+https://scarbs.xyz/"
 checksum = "sha256:44f32d242af1e43982decc49c563e613a9b67ade552f5c3d5cde504e92f74607"
+
+[[package]]
+name = "snforge_scarb_plugin"
+version = "0.35.0"
+source = "git+https://github.com/foundry-rs/starknet-foundry.git?tag=v0.35.0#281bd6b3e84fb8d5cf2044763b04174d99457f20"
+
+[[package]]
+name = "snforge_std"
+version = "0.35.0"
+source = "git+https://github.com/foundry-rs/starknet-foundry.git?tag=v0.35.0#281bd6b3e84fb8d5cf2044763b04174d99457f20"
+dependencies = [
+ "snforge_scarb_plugin",
+]

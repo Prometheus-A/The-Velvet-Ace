@@ -236,9 +236,9 @@ pub mod actions {
             // Read and reset the deck from the game
             let mut deck = game.deck;
             // Re-initialize the deck with the same game_id
-            deck = DeckImpl::new_deck(ref deck, game_id.into());
+            deck = deck.new_deck(game_id.into());
             // Shuffle the deck
-            DeckImpl::shuffle(ref deck);
+            deck.shuffle();
             
             // Update the game's deck
             game.deck = deck;

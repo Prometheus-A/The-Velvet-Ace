@@ -250,6 +250,7 @@ pub impl HandImpl of HandTrait {
     }
 
     fn add_card(card: Card, ref hand: Hand) { // ensure card is added.
+        hand.cards.append(card);
     }
 }
 

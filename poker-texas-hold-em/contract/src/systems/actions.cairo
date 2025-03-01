@@ -38,7 +38,7 @@ pub mod actions {
     use dojo::event::EventStorage;
     // use dojo::world::{WorldStorage, WorldStorageTrait};
     use poker::models::{GameId, GameMode, Game, GameParams};
-    use poker::models::{GameTrait};
+    use poker::models::{GameTrait, DeckTrait, HandTrait};
     use poker::models::{Player, Card, Hand, Deck, GameErrors};
 
     pub const ID: felt252 = 'id';
@@ -162,7 +162,35 @@ pub mod actions {
             Option::None
         }
 
-        fn _deal_hands(ref players: Array<Player>) { // deal hands for each player in the array
+        fn _deal_hands(
+            ref self: @ContractState, ref players: Array<Player>,
+        ) { // deal hands for each player in the array
+            assert(!players.is_empty(), 'Players cannot be empty');
+
+            let first_player = players.at(0);
+            let game_id = self.extract_current_game_id(first_player);
+
+            for player in players.span() {
+                let current_game_id = self.extract_current_game_id(player);
+                assert(current_game_id == game_id, 'Players in different games');
+            };
+
+            let mut world = self.world_default();
+            let mut deck: Deck = world.read_model(game_id);
+
+            for mut player in players.span() {
+                let mut hand = HandTrait::new_hand(*player.id);
+
+                for _ in 0_u8..2_u8 {
+                    let card = deck.deal_card();
+                    HandTrait::add_card(card, ref hand);
+                };
+
+                world.write_model(@hand);
+                world.write_model(player);
+            };
+
+            world.write_model(@deck);
         }
 
         fn _resolve_hands(
@@ -236,6 +264,10 @@ pub mod actions {
             
             // Update the game in the world
             world.write_model(@game);
+        }
+
+        fn u64_to_felt(value: u64) -> felt252 {
+            value.into()
         }
     }
 }

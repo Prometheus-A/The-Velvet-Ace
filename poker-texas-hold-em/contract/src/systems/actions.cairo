@@ -208,7 +208,7 @@ pub mod actions {
             let (is_locked, player_game_id) = first_player.locked;
 
             // Assert the first player is in a game
-            assert(is_locked, GameErrors::PLAYER_NOT_IN_GAME);
+            assert(*is_locked, GameErrors::PLAYER_NOT_IN_GAME);
             assert(player_game_id != 0, GameErrors::PLAYER_NOT_IN_GAME);
 
             game_id = *player_game_id;

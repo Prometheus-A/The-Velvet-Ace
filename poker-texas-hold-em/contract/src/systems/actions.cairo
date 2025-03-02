@@ -194,7 +194,7 @@ pub mod actions {
         }
 
         fn _resolve_hands(
-            ref players: Array<Player>,
+            self: @ContractState, ref players: Array<Player>,
         ) { // after each round, resolve all players hands by removing all cards from each hand
             // and perhaps re-initialize and shuffle the deck.
             // Extract current game_id from each player (ensuring all players are in the same game)
@@ -211,7 +211,7 @@ pub mod actions {
             assert(is_locked, GameErrors::PLAYER_NOT_IN_GAME);
             assert(player_game_id != 0, GameErrors::PLAYER_NOT_IN_GAME);
 
-            game_id = player_game_id;
+            game_id = *player_game_id;
 
             // Verify all players are in the same game
             let mut i: u32 = 1;
@@ -220,12 +220,12 @@ pub mod actions {
                 let (player_is_locked, player_game_id) = player.locked;
 
                 // Assert the player is in a game
-                assert(player_is_locked, GameErrors::PLAYER_NOT_IN_GAME);
+                assert(*player_is_locked, GameErrors::PLAYER_NOT_IN_GAME);
                 // Assert all players are in the same game
-                assert(player_game_id == game_id, 'Players in different games');
+                assert(*player_game_id == game_id, 'Players in different games');
 
                 i += 1;
-            }
+            };
 
             // Get the world storage
             let mut world = self.world_default();
@@ -253,14 +253,11 @@ pub mod actions {
                 let player_address = player.id;
                 player.hand = HandTrait::new_hand(player_address);
 
-                // Update the player in the players array
-                players.set(j, player);
-
                 // Update the player in the world
                 world.write_model(@player);
 
                 j += 1;
-            }
+            };
 
             // Update the game in the world
             world.write_model(@game);

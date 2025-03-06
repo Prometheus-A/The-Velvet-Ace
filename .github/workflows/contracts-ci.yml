@@ -1,0 +1,55 @@
+name: Contracts CI
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install asdf
+        uses: asdf-vm/actions/setup@v2
+
+      - name: Install plugins
+        run: |
+          asdf plugin add scarb
+          asdf install scarb 2.9.1
+          asdf global scarb 2.9.1
+          asdf plugin add dojo https://github.com/dojoengine/asdf-dojo
+          asdf install dojo 1.0.11 
+          asdf global dojo 1.0.11
+          asdf plugin add starknet-foundry
+          asdf install starknet-foundry 0.35.0
+          asdf global starknet-foundry 0.35.0
+
+      - name: Build contracts
+        run: |
+          cd poker-texas-hold-em/contract
+          sozo build
+
+      - name: Run tests
+        run: |
+          cd poker-texas-hold-em/contract
+          sozo test
+
+      - name: Check formatting
+        run: |
+          cd poker-texas-hold-em/contract
+          scarb fmt --check
+
+      - name: ERC721
+        run: |
+          cd poker-texas-hold-em/erc721
+          scarb build
+          snforge test
+          scarb fmt --check

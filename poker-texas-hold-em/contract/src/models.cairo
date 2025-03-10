@@ -55,6 +55,7 @@ pub struct GameParams {
 /// community - cards - the available community cards in the game
 /// pot - the pot returning the pot size
 /// params - the gameparams used to initialize the game.
+/// 
 #[derive(Drop, Default, Serde)]
 #[dojo::model]
 pub struct Game {

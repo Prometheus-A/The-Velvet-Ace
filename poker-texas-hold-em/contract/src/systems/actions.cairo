@@ -177,6 +177,8 @@ pub mod actions {
             let mut next_dealer: Player = (*players.at(next_index.into())).unwrap();
             next_dealer.is_dealer = true;
 
+            world.write_model(@next_dealer);
+            world.write_model(@player);
             world.write_model(@game);
 
             Option::Some(current_dealer)

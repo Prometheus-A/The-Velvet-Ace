@@ -188,3 +188,131 @@ fn generate_combinations(cards: Array<Card>, k: u32) -> Array<Array<Card>> {
     }
     combinations
 }
+
+// Helper function to evaluate a 5-card hand and return its rank
+fn evaluate_five_cards(cards: Array<Card>) -> u16 {
+    assert(cards.len() == 5, 'Must have 5 cards');
+
+    // Map cards to (original_value, poker_value, suit) where Ace (1) becomes 14 for high
+    let mut card_data = ArrayTrait::new();
+    let mut i = 0;
+    while i < cards.len() {
+        let card = *cards.at(i);
+        let poker_value = if card.value == Royals::ACE { 14_u16 } else { card.value };
+        card_data.append((card.value, poker_value, card.suit));
+        i += 1;
+    }
+
+    // Sort by poker_value descending (bubble sort)
+    let mut sorted = card_data.clone();
+    let mut swapped = true;
+    while swapped {
+        swapped = false;
+        let mut j = 0;
+        while j < sorted.len() - 1 {
+            if *sorted.at(j).1 < *sorted.at(j + 1).1 {
+                let temp = *sorted.at(j);
+                sorted[j] = *sorted.at(j + 1);
+                sorted[j + 1] = temp;
+                swapped = true;
+            }
+            j += 1;
+        }
+    }
+
+    // Check for flush (all suits identical)
+    let is_flush = *sorted.at(0).2 == *sorted.at(1).2 
+        && *sorted.at(1).2 == *sorted.at(2).2 
+        && *sorted.at(2).2 == *sorted.at(3).2 
+        && *sorted.at(3).2 == *sorted.at(4).2;
+
+    // Check for straight
+    let is_straight_high = *sorted.at(0).1 == *sorted.at(1).1 + 1 
+        && *sorted.at(1).1 == *sorted.at(2).1 + 1 
+        && *sorted.at(2).1 == *sorted.at(3).1 + 1 
+        && *sorted.at(3).1 == *sorted.at(4).1 + 1;
+    let is_straight_low = *sorted.at(0).0 == Royals::ACE 
+        && *sorted.at(1).0 == 2 
+        && *sorted.at(2).0 == 3 
+        && *sorted.at(3).0 == 4 
+        && *sorted.at(4).0 == 5;
+    let is_straight = is_straight_high || is_straight_low;
+
+    // Royal Flush and Straight Flush
+    if is_flush && is_straight {
+        if *sorted.at(0).1 == 14 { // Ace-high straight flush
+            return HandRank::ROYAL_FLUSH;
+        }
+        return HandRank::STRAIGHT_FLUSH;
+    }
+
+    // Count occurrences of each value for pairs, three of a kind, etc.
+    let mut value_counts: Felt252Dict<u8> = Default::default();
+    i = 0;
+    while i < sorted.len() {
+        let count = value_counts.get((*sorted.at(i).0).into());
+        value_counts.insert((*sorted.at(i).0).into(), count + 1);
+        i += 1;
+    }
+
+    // Extract counts and sort them descending
+    let mut counts = ArrayTrait::new();
+    let mut entries = value_counts.entries();
+    while let Option::Some(entry) = entries.pop_front() {
+        counts.append(entry.value);
+    }
+
+    let mut sorted_counts = counts.clone();
+    swapped = true;
+    while swapped {
+        swapped = false;
+        let mut j = 0;
+        while j < sorted_counts.len() - 1 {
+            if *sorted_counts.at(j) < *sorted_counts.at(j + 1) {
+                let temp = *sorted_counts.at(j);
+                sorted_counts[j] = *sorted_counts.at(j + 1);
+                sorted_counts[j + 1] = temp;
+                swapped = true;
+            }
+            j += 1;
+        }
+    }
+
+    // Four of a Kind
+    if *sorted_counts.at(0) == 4 {
+        return HandRank::FOUR_OF_A_KIND;
+    }
+
+    // Full House
+    if *sorted_counts.at(0) == 3 && *sorted_counts.at(1) == 2 {
+        return HandRank::FULL_HOUSE;
+    }
+
+    // Flush
+    if is_flush {
+        return HandRank::FLUSH;
+    }
+
+    // Straight
+    if is_straight {
+        return HandRank::STRAIGHT;
+    }
+
+    // Three of a Kind
+    if *sorted_counts.at(0) == 3 {
+        return HandRank::THREE_OF_A_KIND;
+    }
+
+    // Two Pair
+    if *sorted_counts.at(0) == 2 && *sorted_counts.at(1) == 2 {
+        return HandRank::TWO_PAIR;
+    }
+
+    // One Pair
+    if *sorted_counts.at(0) == 2 {
+        return HandRank::ONE_PAIR;
+    }
+
+    // High Card
+    HandRank::HIGH_CARD
+}

@@ -165,3 +165,26 @@ fn hands_changed(ref winning_hands: Array<Hand>) {
     };
 }
 
+// Helper function to generate all k-card combinations from an array of cards
+fn generate_combinations(cards: Array<Card>, k: u32) -> Array<Array<Card>> {
+    let n = cards.len();
+    let mut combinations = ArrayTrait::new();
+    let total = 1_u32 << n; // 2^n possible subsets
+    let mut i = 0;
+
+    while i < total {
+        let mut subset = ArrayTrait::new();
+        let mut j = 0;
+        while j < n {
+            if (i & (1 << j)) != 0 {
+                subset.append(*cards.at(j));
+            }
+            j += 1;
+        }
+        if subset.len() == k {
+            combinations.append(subset);
+        }
+        i += 1;
+    }
+    combinations
+}

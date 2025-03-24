@@ -3,6 +3,7 @@ use poker::models::hand::{Hand, HandRank};
 use poker::models::card::{Card, DEFAULT_NO_OF_CARDS, Royals};
 use poker::models::game::GameParams;
 use core::num::traits::Zero;
+use core::dict::Felt252DictTrait;
 
 pub trait HandTrait {
     fn default() -> Hand;
@@ -50,18 +51,41 @@ pub impl HandImpl of HandTrait {
         /// We need to find the best 5-card hand from all available cards
         /// First, analyze the cards to gather statistics
         
-        // Count occurrences of each value
-        let mut value_counts: Array<(u16, u8)> = array![];
-        let mut k = 0;
-        while k < 14 {
-            value_counts.append((k, 0));
+        // Count occurrences of each value (1 to 14)
+        let mut value_counts: Felt252Dict<u8> = Default::default();
+        let mut k = 1_u16;
+        while k <= 14 {
+            value_counts.insert(k.into(), 0);
             k += 1;
         };
 
+        // Count cards by suit (0 to 3)
+        let mut suit_counts: Felt252Dict<u8> = Default::default();
+        let mut s = 0_u8;
+        while s < 4 {
+            suit_counts.insert(s.into(), 0);
+            s += 1;
+        };
 
+        // Fill the value and suit counts
+        let mut c = 0;
+        while c < all_cards.len() {
+            let card = *all_cards.at(c);
+            // Update value count
+            let value = card.value; // u16
+            let count = value_counts.get(value.into()); // Convert u16 to felt252
+            value_counts.insert(value.into(), count + 1);
+
+            // Update suit count
+            let suit = card.suit; // u8
+            let count = suit_counts.get(suit.into()); // Convert u8 to felt252
+            suit_counts.insert(suit.into(), count + 1);
+
+            c += 1;
+        };
 
         // this function can be called externally in the future.
-        (Self::default(), 0)
+        (Self::default(), 0) // Temporary return value
     }
 
     /// This function will compare the hands of all the players and return an array of Player

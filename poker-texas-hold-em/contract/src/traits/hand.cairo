@@ -2,8 +2,10 @@ use starknet::ContractAddress;
 use poker::models::hand::{Hand, HandRank};
 use poker::models::card::{Card, DEFAULT_NO_OF_CARDS, Royals};
 use poker::models::game::GameParams;
-use core::num::traits::Zero;
+use core::num::traits::{Zero, One};
 use core::dict::Felt252DictTrait;
+use core::array::ArrayTrait;
+use core::option::OptionTrait;
 
 pub trait HandTrait {
     fn default() -> Hand;
@@ -48,41 +50,37 @@ pub impl HandImpl of HandTrait {
             j += 1;
         };
 
-        /// We need to find the best 5-card hand from all available cards
-        /// First, analyze the cards to gather statistics
-        
-        // Count occurrences of each value (1 to 14)
+        assert(all_cards.len() == 7, 'Invalid card count');
+
+        // Use Felt252Dict for value and suit counts
         let mut value_counts: Felt252Dict<u8> = Default::default();
-        let mut k = 1_u16;
+        let mut suit_counts: Felt252Dict<u8> = Default::default();
+
+        // Initialize counts
+        let mut k: u16 = 1;
         while k <= 14 {
             value_counts.insert(k.into(), 0);
             k += 1;
         };
-
-        // Count cards by suit (0 to 3)
-        let mut suit_counts: Felt252Dict<u8> = Default::default();
-        let mut s = 0_u8;
+        let mut s: u8 = 0;
         while s < 4 {
             suit_counts.insert(s.into(), 0);
             s += 1;
         };
 
-        // Fill the value and suit counts
-        let mut c = 0;
+        // Fill value and suit counts
+        let mut c: usize = 0;
         while c < all_cards.len() {
             let card = *all_cards.at(c);
-            // Update value count
-            let value = card.value; // u16
-            let count = value_counts.get(value.into()); // Convert u16 to felt252
-            value_counts.insert(value.into(), count + 1);
-
-            // Update suit count
-            let suit = card.suit; // u8
-            let count = suit_counts.get(suit.into()); // Convert u8 to felt252
-            suit_counts.insert(suit.into(), count + 1);
-
+            let value: u16 = card.value;
+            let suit: u8 = card.suit;
+            value_counts.insert(value.into(), value_counts.get(value.into()) + 1);
+            suit_counts.insert(suit.into(), suit_counts.get(suit.into()) + 1);
             c += 1;
         };
+
+        // Generate all 5-card combinations (C(7,5) = 21)
+        let combinations = generate_combinations(all_cards.clone(), 5);
 
         // this function can be called externally in the future.
         (Self::default(), 0) // Temporary return value
@@ -178,4 +176,59 @@ fn hands_changed(ref winning_hands: Array<Hand>) {
         // discard all existing objects in `winning_hands`. A clean slate.
         winning_hands.pop_front().unwrap();
     };
+}
+
+// Generate all k-card combinations from an array
+fn generate_combinations(cards: Array<Card>, k: usize) -> Array<Array<Card>> {
+    let n = cards.len();
+    let mut result: Array<Array<Card>> = array![];
+    let total = pow(2, n.try_into().unwrap()); // 2^n subsets
+    let mut i: u32 = 0;
+
+    while i < total {
+        let mut subset: Array<Card> = array![];
+        let mut j: usize = 0;
+        while j < n {
+            if bit_and(i, pow(2, j.try_into().unwrap())) != 0 {
+                subset.append(*cards.at(j));
+            };
+            j += 1;
+        };
+        if subset.len() == k {
+            result.append(subset);
+        };
+        i += 1;
+    };
+    result
+}
+
+// Helper: Bitwise AND simulation
+fn bit_and(a: u32, b: u32) -> u32 {
+    let mut result = 0_u32;
+    let mut position = 0_u32;
+    let mut a_copy = a;
+    let mut b_copy = b;
+
+    while position < 32 {
+        let bit_a = a_copy % 2;
+        let bit_b = b_copy % 2;
+        if bit_a == 1 && bit_b == 1 {
+            result += pow(2, position);
+        };
+        a_copy /= 2;
+        b_copy /= 2;
+        position += 1;
+    };
+    result
+}
+
+// Helper: Power function
+fn pow(base: u32, exp: u32) -> u32 {
+    let mut result = 1_u32;
+    let mut i = 0_u32;
+    while i < exp {
+        result *= base;
+        i += 1;
+    };
+    result
 }

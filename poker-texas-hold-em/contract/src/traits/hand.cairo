@@ -31,7 +31,46 @@ pub impl HandImpl of HandTrait {
         // document the function.
 
         // this function can be called externally in the future.
-        (Self::default(), 0)
+        // (Self::default(), 0)
+
+        // Extract player and private cards
+        let player = *self.player;
+        let private_cards = *self.cards;
+
+        // Combine private and community cards into a single array
+        let mut all_cards = ArrayTrait::new();
+        for card in private_cards {
+            all_cards.append(*card);
+        }
+        for card in community_cards {
+            all_cards.append(*card);
+        }
+
+        // Ensure exactly 7 cards (2 private + 5 community)
+        assert(all_cards.len() == 7, 'Invalid card count');
+
+        // Generate all possible 5-card combinations
+        let combinations = generate_combinations(all_cards, 5);
+
+        // Evaluate all combinations to find the best hand
+        let mut best_rank: u16 = HandRank::HIGH_CARD; // Lowest rank as default
+        let mut best_hand_cards: Array<Card> = array![];
+
+        let mut i = 0;
+        while i < combinations.len() {
+            let combo = *combinations.at(i);
+            let rank = evaluate_five_cards(combo);
+            if rank > best_rank {
+                best_rank = rank;
+                best_hand_cards = combo;
+            }
+            i += 1;
+        }
+
+        // Create the best hand with the original player
+        let best_hand = Hand { player, cards: best_hand_cards };
+
+        (best_hand, best_rank)
     }
 
     /// This function will compare the hands of all the players and return an array of Player

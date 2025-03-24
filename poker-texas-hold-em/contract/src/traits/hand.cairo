@@ -30,47 +30,38 @@ pub impl HandImpl of HandTrait {
         // return both values in a tuple
         // document the function.
 
-        // this function can be called externally in the future.
-        // (Self::default(), 0)
+        // Combine player's hand cards with community cards for evaluation
+        let mut all_cards: Array<Card> = array![];
 
-        // Extract player and private cards
-        let player = *self.player;
-        let private_cards = *self.cards;
-
-        // Combine private and community cards into a single array
-        let mut all_cards = ArrayTrait::new();
-        for card in private_cards {
-            all_cards.append(*card);
-        }
-        for card in community_cards {
-            all_cards.append(*card);
-        }
-
-        // Ensure exactly 7 cards (2 private + 5 community)
-        assert(all_cards.len() == 7, 'Invalid card count');
-
-        // Generate all possible 5-card combinations
-        let combinations = generate_combinations(all_cards, 5);
-
-        // Evaluate all combinations to find the best hand
-        let mut best_rank: u16 = HandRank::HIGH_CARD; // Lowest rank as default
-        let mut best_hand_cards: Array<Card> = array![];
-
+        // Add player's hand cards
         let mut i = 0;
-        while i < combinations.len() {
-            let combo = *combinations.at(i);
-            let rank = evaluate_five_cards(combo);
-            if rank > best_rank {
-                best_rank = rank;
-                best_hand_cards = combo;
-            }
+        while i < self.cards.len() {
+            all_cards.append(*self.cards[i]);
             i += 1;
-        }
+        };
 
-        // Create the best hand with the original player
-        let best_hand = Hand { player, cards: best_hand_cards };
+        // Add community cards
+        let mut j = 0;
+        while j < community_cards.len() {
+            all_cards.append(*community_cards[j]);
+            j += 1;
+        };
 
-        (best_hand, best_rank)
+        /// We need to find the best 5-card hand from all available cards
+        /// First, analyze the cards to gather statistics
+        
+        // Count occurrences of each value
+        let mut value_counts: Array<(u16, u8)> = array![];
+        let mut k = 0;
+        while k < 14 {
+            value_counts.append((k, 0));
+            k += 1;
+        };
+
+
+
+        // this function can be called externally in the future.
+        (Self::default(), 0)
     }
 
     /// This function will compare the hands of all the players and return an array of Player
@@ -163,156 +154,4 @@ fn hands_changed(ref winning_hands: Array<Hand>) {
         // discard all existing objects in `winning_hands`. A clean slate.
         winning_hands.pop_front().unwrap();
     };
-}
-
-// Helper function to generate all k-card combinations from an array of cards
-fn generate_combinations(cards: Array<Card>, k: u32) -> Array<Array<Card>> {
-    let n = cards.len();
-    let mut combinations = ArrayTrait::new();
-    let total = 1_u32 << n; // 2^n possible subsets
-    let mut i = 0;
-
-    while i < total {
-        let mut subset = ArrayTrait::new();
-        let mut j = 0;
-        while j < n {
-            if (i & (1 << j)) != 0 {
-                subset.append(*cards.at(j));
-            }
-            j += 1;
-        }
-        if subset.len() == k {
-            combinations.append(subset);
-        }
-        i += 1;
-    }
-    combinations
-}
-
-// Helper function to evaluate a 5-card hand and return its rank
-fn evaluate_five_cards(cards: Array<Card>) -> u16 {
-    assert(cards.len() == 5, 'Must have 5 cards');
-
-    // Map cards to (original_value, poker_value, suit) where Ace (1) becomes 14 for high
-    let mut card_data = ArrayTrait::new();
-    let mut i = 0;
-    while i < cards.len() {
-        let card = *cards.at(i);
-        let poker_value = if card.value == Royals::ACE { 14_u16 } else { card.value };
-        card_data.append((card.value, poker_value, card.suit));
-        i += 1;
-    }
-
-    // Sort by poker_value descending (bubble sort)
-    let mut sorted = card_data.clone();
-    let mut swapped = true;
-    while swapped {
-        swapped = false;
-        let mut j = 0;
-        while j < sorted.len() - 1 {
-            if *sorted.at(j).1 < *sorted.at(j + 1).1 {
-                let temp = *sorted.at(j);
-                sorted[j] = *sorted.at(j + 1);
-                sorted[j + 1] = temp;
-                swapped = true;
-            }
-            j += 1;
-        }
-    }
-
-    // Check for flush (all suits identical)
-    let is_flush = *sorted.at(0).2 == *sorted.at(1).2 
-        && *sorted.at(1).2 == *sorted.at(2).2 
-        && *sorted.at(2).2 == *sorted.at(3).2 
-        && *sorted.at(3).2 == *sorted.at(4).2;
-
-    // Check for straight
-    let is_straight_high = *sorted.at(0).1 == *sorted.at(1).1 + 1 
-        && *sorted.at(1).1 == *sorted.at(2).1 + 1 
-        && *sorted.at(2).1 == *sorted.at(3).1 + 1 
-        && *sorted.at(3).1 == *sorted.at(4).1 + 1;
-    let is_straight_low = *sorted.at(0).0 == Royals::ACE 
-        && *sorted.at(1).0 == 2 
-        && *sorted.at(2).0 == 3 
-        && *sorted.at(3).0 == 4 
-        && *sorted.at(4).0 == 5;
-    let is_straight = is_straight_high || is_straight_low;
-
-    // Royal Flush and Straight Flush
-    if is_flush && is_straight {
-        if *sorted.at(0).1 == 14 { // Ace-high straight flush
-            return HandRank::ROYAL_FLUSH;
-        }
-        return HandRank::STRAIGHT_FLUSH;
-    }
-
-    // Count occurrences of each value for pairs, three of a kind, etc.
-    let mut value_counts: Felt252Dict<u8> = Default::default();
-    i = 0;
-    while i < sorted.len() {
-        let count = value_counts.get((*sorted.at(i).0).into());
-        value_counts.insert((*sorted.at(i).0).into(), count + 1);
-        i += 1;
-    }
-
-    // Extract counts and sort them descending
-    let mut counts = ArrayTrait::new();
-    let mut entries = value_counts.entries();
-    while let Option::Some(entry) = entries.pop_front() {
-        counts.append(entry.value);
-    }
-
-    let mut sorted_counts = counts.clone();
-    swapped = true;
-    while swapped {
-        swapped = false;
-        let mut j = 0;
-        while j < sorted_counts.len() - 1 {
-            if *sorted_counts.at(j) < *sorted_counts.at(j + 1) {
-                let temp = *sorted_counts.at(j);
-                sorted_counts[j] = *sorted_counts.at(j + 1);
-                sorted_counts[j + 1] = temp;
-                swapped = true;
-            }
-            j += 1;
-        }
-    }
-
-    // Four of a Kind
-    if *sorted_counts.at(0) == 4 {
-        return HandRank::FOUR_OF_A_KIND;
-    }
-
-    // Full House
-    if *sorted_counts.at(0) == 3 && *sorted_counts.at(1) == 2 {
-        return HandRank::FULL_HOUSE;
-    }
-
-    // Flush
-    if is_flush {
-        return HandRank::FLUSH;
-    }
-
-    // Straight
-    if is_straight {
-        return HandRank::STRAIGHT;
-    }
-
-    // Three of a Kind
-    if *sorted_counts.at(0) == 3 {
-        return HandRank::THREE_OF_A_KIND;
-    }
-
-    // Two Pair
-    if *sorted_counts.at(0) == 2 && *sorted_counts.at(1) == 2 {
-        return HandRank::TWO_PAIR;
-    }
-
-    // One Pair
-    if *sorted_counts.at(0) == 2 {
-        return HandRank::ONE_PAIR;
-    }
-
-    // High Card
-    HandRank::HIGH_CARD
 }

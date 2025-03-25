@@ -22,9 +22,26 @@ pub trait HandTrait {
 }
 
 pub impl HandImpl of HandTrait {
-    /// This function will return the hand rank of the player's hand
-    /// this will compare the cards on the player's hand with the community cards
-    /// returns a new hand of the HandRank, to or to not be used.
+    /// Evaluates the rank of a player's hand by combining their cards with community cards
+    ///
+    /// This function determines the highest-ranking 5-card hand possible using the player's
+    /// cards and the community cards. It generates all possible 5-card combinations and 
+    /// evaluates each to find the best hand and its corresponding rank.
+    ///
+    /// # Arguments
+    /// * `self` - A reference to the current Hand
+    /// * `community_cards` - An array of community cards to combine with the player's hand
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// 1. A new Hand with the best 5 cards found
+    /// 2. The rank of the hand as a u16 (using HandRank constants)
+    ///
+    /// # Panics
+    /// Panics if the total number of cards is not exactly 7
+    ///
+    /// # Author
+    /// [@pope-h]
     fn rank(self: @Hand, community_cards: Array<Card>) -> (Hand, u16) {
         // use HandRank to get the rank for a hand of one player
         // return using the HandRank::<the const>, and not the raw u16 value

@@ -260,7 +260,11 @@ fn evaluate_five_cards(cards: Array<Card>) -> (Array<Card>, u16) {
     let mut i: usize = 0;
     while i < cards.len() {
         let card = *cards.at(i);
-        let poker_value = if card.value == Royals::ACE { 14_u16 } else { card.value };
+        let poker_value = if card.value == Royals::ACE {
+            14_u16
+        } else {
+            card.value
+        };
         card_data.append((card.value, poker_value, card.suit));
         i += 1;
     };
@@ -279,10 +283,11 @@ fn evaluate_five_cards(cards: Array<Card>) -> (Array<Card>, u16) {
     let is_flush = suit0 == suit1 && suit1 == suit2 && suit2 == suit3 && suit3 == suit4;
 
     // Check for high straight using poker_values
-    let is_straight_high = poker_val0 == poker_val1 + 1
-        && poker_val1 == poker_val2 + 1
-        && poker_val2 == poker_val3 + 1
-        && poker_val3 == poker_val4 + 1;
+    let is_straight_high = poker_val0 == poker_val1
+        + 1 && poker_val1 == poker_val2
+        + 1 && poker_val2 == poker_val3
+        + 1 && poker_val3 == poker_val4
+        + 1;
 
     // Check for Ace-low straight using original_values
     let is_straight_low = orig_val0 == Royals::ACE
@@ -389,9 +394,7 @@ fn bubble_sort_u8(mut arr: Array<u8>) -> Array<u8> {
 }
 
 // Helper: Set element in array (immutable workaround)
-fn set_array_element<T, +Copy<T>, +Drop<T>>(
-    mut arr: Array<T>, index: usize, value: T
-) -> Array<T> {
+fn set_array_element<T, +Copy<T>, +Drop<T>>(mut arr: Array<T>, index: usize, value: T) -> Array<T> {
     let mut new_arr: Array<T> = array![];
     let mut i: usize = 0;
     while i < arr.len() {

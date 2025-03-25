@@ -250,7 +250,20 @@ fn generate_combinations(cards: Array<Card>, k: usize) -> Array<Array<Card>> {
     result
 }
 
-// Helper: Bitwise AND simulation
+/// Performs bitwise AND operation simulation
+///
+/// This function simulates a bitwise AND operation for 32-bit unsigned integers
+/// by manually checking and combining bits.
+///
+/// # Arguments
+/// * `a` - First 32-bit unsigned integer
+/// * `b` - Second 32-bit unsigned integer
+///
+/// # Returns
+/// Result of the bitwise AND operation
+///
+/// # Author
+/// [@pope-h]
 fn bit_and(a: u32, b: u32) -> u32 {
     let mut result = 0_u32;
     let mut position = 0_u32;

@@ -33,6 +33,9 @@ pub impl HandImpl of HandTrait {
         // return both values in a tuple
         // document the function.
 
+        // this function can be called externally in the future.
+        // (Self::default(), 0) // Temporary return value
+
         // Combine player's hand cards with community cards for evaluation
         let mut all_cards: Array<Card> = array![];
 
@@ -82,7 +85,23 @@ pub impl HandImpl of HandTrait {
         // Generate all 5-card combinations (C(7,5) = 21)
         let combinations = generate_combinations(all_cards.clone(), 5);
 
-        // this function can be called externally in the future.
+        // Evaluate each combination to find the best hand
+        let mut best_rank: u16 = HandRank::HIGH_CARD;
+        let mut best_hand_cards: Array<Card> = array![];
+        let mut i: usize = 0;
+
+        while i < combinations.len() {
+            let combo = combinations.at(i);
+            let (hand_cards, rank) = evaluate_five_cards(combo.clone());
+            if rank > best_rank {
+                best_rank = rank;
+                best_hand_cards = hand_cards.clone();
+            };
+            i += 1;
+        };
+
+        // let best_hand = Hand { player, cards: best_hand_cards };
+        // (best_hand, best_rank)
         (Self::default(), 0) // Temporary return value
     }
 
@@ -231,4 +250,158 @@ fn pow(base: u32, exp: u32) -> u32 {
         i += 1;
     };
     result
+}
+
+// Evaluate a 5-card hand and return (cards, rank)
+fn evaluate_five_cards(cards: Array<Card>) -> (Array<Card>, u16) {
+    assert(cards.len() == 5, 'Must have 5 cards');
+
+    // Convert to array of (value, poker_value, suit) for Ace handling
+    let mut card_data: Array<(u16, u16, u8)> = array![];
+    let mut i: usize = 0;
+    while i < cards.len() {
+        let card = *cards.at(i);
+        let poker_value = if card.value == Royals::ACE { 14_u16 } else { card.value };
+        card_data.append((card.value, poker_value, card.suit));
+        i += 1;
+    };
+
+    // Sort by poker_value descending
+    let mut sorted = bubble_sort(card_data.clone());
+
+    // Extract all tuple elements for each card
+    let (orig_val0, poker_val0, suit0) = *sorted.at(0);
+    let (orig_val1, poker_val1, suit1) = *sorted.at(1);
+    let (orig_val2, poker_val2, suit2) = *sorted.at(2);
+    let (orig_val3, poker_val3, suit3) = *sorted.at(3);
+    let (orig_val4, poker_val4, suit4) = *sorted.at(4);
+
+    // Check for flush using suits (already fixed)
+    let is_flush = suit0 == suit1 && suit1 == suit2 && suit2 == suit3 && suit3 == suit4;
+
+    // Check for high straight using poker_values
+    let is_straight_high = poker_val0 == poker_val1 + 1
+        && poker_val1 == poker_val2 + 1
+        && poker_val2 == poker_val3 + 1
+        && poker_val3 == poker_val4 + 1;
+
+    // Check for Ace-low straight using original_values
+    let is_straight_low = orig_val0 == Royals::ACE
+        && orig_val1 == 5
+        && orig_val2 == 4
+        && orig_val3 == 3
+        && orig_val4 == 2;
+    let is_straight = is_straight_high || is_straight_low;
+
+    // Count values for pairs, three of a kind, etc., using original_values
+    let mut value_counts: Felt252Dict<u8> = Default::default();
+    let values = array![orig_val0, orig_val1, orig_val2, orig_val3, orig_val4];
+    i = 0;
+    while i < values.len() {
+        let val = *values.at(i);
+        value_counts.insert(val.into(), value_counts.get(val.into()) + 1);
+        i += 1;
+    };
+
+    let mut counts: Array<u8> = array![];
+    let mut k: u16 = 1;
+    while k <= 14 {
+        let count = value_counts.get(k.into());
+        if count > 0 {
+            counts.append(count);
+        };
+        k += 1;
+    };
+    let sorted_counts = bubble_sort_u8(counts.clone());
+
+    // Evaluate hand rank
+    if is_flush && is_straight {
+        if poker_val0 == 14 {
+            return (cards.clone(), HandRank::ROYAL_FLUSH);
+        }
+        return (cards.clone(), HandRank::STRAIGHT_FLUSH);
+    }
+    if sorted_counts.len() > 0 && *sorted_counts.at(0) == 4 {
+        return (cards.clone(), HandRank::FOUR_OF_A_KIND);
+    }
+    if sorted_counts.len() > 1 && *sorted_counts.at(0) == 3 && *sorted_counts.at(1) == 2 {
+        return (cards.clone(), HandRank::FULL_HOUSE);
+    }
+    if is_flush {
+        return (cards.clone(), HandRank::FLUSH);
+    }
+    if is_straight {
+        return (cards.clone(), HandRank::STRAIGHT);
+    }
+    if sorted_counts.len() > 0 && *sorted_counts.at(0) == 3 {
+        return (cards.clone(), HandRank::THREE_OF_A_KIND);
+    }
+    if sorted_counts.len() > 1 && *sorted_counts.at(0) == 2 && *sorted_counts.at(1) == 2 {
+        return (cards.clone(), HandRank::TWO_PAIR);
+    }
+    if sorted_counts.len() > 0 && *sorted_counts.at(0) == 2 {
+        return (cards.clone(), HandRank::ONE_PAIR);
+    }
+    (cards.clone(), HandRank::HIGH_CARD)
+}
+
+// Helper: Bubble sort for (value, poker_value, suit) tuples
+fn bubble_sort(mut arr: Array<(u16, u16, u8)>) -> Array<(u16, u16, u8)> {
+    let mut swapped = true;
+    while swapped {
+        swapped = false;
+        let mut i: usize = 0;
+        while i < arr.len() - 1 {
+            // Destructure the tuples to access poker_value
+            let (orig_val_curr, poker_val_curr, suit_curr) = *arr.at(i);
+            let (orig_val_next, poker_val_next, suit_next) = *arr.at(i + 1);
+
+            // Compare poker_values for descending order
+            if poker_val_curr < poker_val_next {
+                // Swap elements if current poker_value is less than next
+                arr = set_array_element(arr.clone(), i, (orig_val_next, poker_val_next, suit_next));
+                arr = set_array_element(arr, i + 1, (orig_val_curr, poker_val_curr, suit_curr));
+                swapped = true;
+            };
+            i += 1;
+        };
+    };
+    arr
+}
+
+// Helper: Bubble sort for u8 array
+fn bubble_sort_u8(mut arr: Array<u8>) -> Array<u8> {
+    let mut swapped = true;
+    while swapped {
+        swapped = false;
+        let mut i: usize = 0;
+        while i < arr.len() - 1 {
+            let current = *arr.at(i);
+            let next = *arr.at(i + 1);
+            if current < next {
+                arr = set_array_element(arr.clone(), i, next);
+                arr = set_array_element(arr, i + 1, current);
+                swapped = true;
+            };
+            i += 1;
+        };
+    };
+    arr
+}
+
+// Helper: Set element in array (immutable workaround)
+fn set_array_element<T, +Copy<T>, +Drop<T>>(
+    mut arr: Array<T>, index: usize, value: T
+) -> Array<T> {
+    let mut new_arr: Array<T> = array![];
+    let mut i: usize = 0;
+    while i < arr.len() {
+        if i == index {
+            new_arr.append(value);
+        } else {
+            new_arr.append(*arr.at(i));
+        };
+        i += 1;
+    };
+    new_arr
 }

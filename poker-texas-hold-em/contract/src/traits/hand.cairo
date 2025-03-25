@@ -456,7 +456,18 @@ fn bubble_sort(mut arr: Array<(u16, u16, u8)>) -> Array<(u16, u16, u8)> {
     arr
 }
 
-// Helper: Bubble sort for u8 array
+/// Performs bubble sort on an array of u8 values
+///
+/// Sorts u8 values in descending order.
+///
+/// # Arguments
+/// * `arr` - An array of u8 values
+///
+/// # Returns
+/// A sorted array of u8 values
+///
+/// # Author
+/// [@pope-h]
 fn bubble_sort_u8(mut arr: Array<u8>) -> Array<u8> {
     let mut swapped = true;
     while swapped {

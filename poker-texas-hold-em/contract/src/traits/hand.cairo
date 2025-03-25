@@ -421,7 +421,18 @@ fn evaluate_five_cards(cards: Array<Card>) -> (Array<Card>, u16) {
     (cards.clone(), HandRank::HIGH_CARD)
 }
 
-// Helper: Bubble sort for (value, poker_value, suit) tuples
+/// Performs bubble sort on an array of card tuples
+///
+/// Sorts card tuples in descending order based on their poker value.
+///
+/// # Arguments
+/// * `arr` - An array of card tuples (original value, poker value, suit)
+///
+/// # Returns
+/// A sorted array of card tuples
+///
+/// # Author
+/// [@pope-h]
 fn bubble_sort(mut arr: Array<(u16, u16, u8)>) -> Array<(u16, u16, u8)> {
     let mut swapped = true;
     while swapped {

@@ -487,7 +487,20 @@ fn bubble_sort_u8(mut arr: Array<u8>) -> Array<u8> {
     arr
 }
 
-// Helper: Set element in array (immutable workaround)
+/// Immutably sets an element in an array
+///
+/// Creates a new array with a specific element replaced at the given index.
+///
+/// # Arguments
+/// * `arr` - The original array
+/// * `index` - The index of the element to replace
+/// * `value` - The new value to set at the specified index
+///
+/// # Returns
+/// A new array with the specified element replaced
+///
+/// # Author
+/// [@pope-h]
 fn set_array_element<T, +Copy<T>, +Drop<T>>(mut arr: Array<T>, index: usize, value: T) -> Array<T> {
     let mut new_arr: Array<T> = array![];
     let mut i: usize = 0;

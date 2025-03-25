@@ -306,7 +306,24 @@ fn pow(base: u32, exp: u32) -> u32 {
     result
 }
 
-// Evaluate a 5-card hand and return (cards, rank)
+/// Evaluates a 5-card hand and determines its poker rank
+///
+/// Analyzes a 5-card hand to determine its poker rank, checking for various 
+/// hand combinations like flush, straight, pairs, etc.
+///
+/// # Arguments
+/// * `cards` - An array of 5 cards to evaluate
+///
+/// # Returns
+/// A tuple containing:
+/// 1. The original cards 
+/// 2. The hand's rank as a u16 (using HandRank constants)
+///
+/// # Panics
+/// Panics if the number of cards is not exactly 5
+///
+/// # Author
+/// [@pope-h]
 fn evaluate_five_cards(cards: Array<Card>) -> (Array<Card>, u16) {
     assert(cards.len() == 5, 'Must have 5 cards');
 

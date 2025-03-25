@@ -100,9 +100,8 @@ pub impl HandImpl of HandTrait {
             i += 1;
         };
 
-        // let best_hand = Hand { player, cards: best_hand_cards };
-        // (best_hand, best_rank)
-        (Self::default(), 0) // Temporary return value
+        let best_hand = Hand { player: *self.player, cards: best_hand_cards };
+        (best_hand, best_rank)
     }
 
     /// This function will compare the hands of all the players and return an array of Player

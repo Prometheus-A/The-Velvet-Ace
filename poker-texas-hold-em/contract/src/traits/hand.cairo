@@ -213,7 +213,20 @@ fn hands_changed(ref winning_hands: Array<Hand>) {
     };
 }
 
-// Generate all k-card combinations from an array
+/// Generates all k-card combinations from a given array of cards
+///
+/// This function creates all possible combinations of `k` cards from the input array
+/// using a bitwise subset generation approach.
+///
+/// # Arguments
+/// * `cards` - An array of cards to generate combinations from
+/// * `k` - The number of cards in each combination
+///
+/// # Returns
+/// An array of arrays, where each inner array is a combination of `k` cards
+///
+/// # Author
+/// [@pope-h]
 fn generate_combinations(cards: Array<Card>, k: usize) -> Array<Array<Card>> {
     let n = cards.len();
     let mut result: Array<Array<Card>> = array![];

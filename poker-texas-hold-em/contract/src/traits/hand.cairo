@@ -283,7 +283,19 @@ fn bit_and(a: u32, b: u32) -> u32 {
     result
 }
 
-// Helper: Power function
+/// Calculates the power of a number
+///
+/// Computes `base` raised to the power of `exp` using iterative multiplication.
+///
+/// # Arguments
+/// * `base` - Base number
+/// * `exp` - Exponent
+///
+/// # Returns
+/// Result of base raised to the power of exp
+///
+/// # Author
+/// [@pope-h]
 fn pow(base: u32, exp: u32) -> u32 {
     let mut result = 1_u32;
     let mut i = 0_u32;

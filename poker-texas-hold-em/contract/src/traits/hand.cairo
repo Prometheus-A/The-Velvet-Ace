@@ -25,7 +25,7 @@ pub impl HandImpl of HandTrait {
     /// Evaluates the rank of a player's hand by combining their cards with community cards
     ///
     /// This function determines the highest-ranking 5-card hand possible using the player's
-    /// cards and the community cards. It generates all possible 5-card combinations and 
+    /// cards and the community cards. It generates all possible 5-card combinations and
     /// evaluates each to find the best hand and its corresponding rank.
     ///
     /// # Arguments
@@ -308,7 +308,7 @@ fn pow(base: u32, exp: u32) -> u32 {
 
 /// Evaluates a 5-card hand and determines its poker rank
 ///
-/// Analyzes a 5-card hand to determine its poker rank, checking for various 
+/// Analyzes a 5-card hand to determine its poker rank, checking for various
 /// hand combinations like flush, straight, pairs, etc.
 ///
 /// # Arguments
@@ -316,7 +316,7 @@ fn pow(base: u32, exp: u32) -> u32 {
 ///
 /// # Returns
 /// A tuple containing:
-/// 1. The original cards 
+/// 1. The original cards
 /// 2. The hand's rank as a u16 (using HandRank constants)
 ///
 /// # Panics

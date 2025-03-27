@@ -238,14 +238,11 @@ pub mod actions {
         }
 
         fn _get_dealer(self: @ContractState, player: @Player) -> Option<Player> {
-            // for the game, if player is in game only
             let mut world = self.world_default();
-            let caller: ContractAddress = get_caller_address();
-            let player: Player = world.read_model(caller);
-            let game_id: u64 = *player.extract_current_game_id(); 
+            let game_id: u64 = *player.extract_current_game_id();
             let game: Game = world.read_model(game_id);
             let players: Array<ContractAddress> = game.players;
-            let num_players: usize  = players.len();
+            let num_players: usize = players.len();
 
             // Find the index of the current dealer
             let mut current_dealer_index: usize = 0;
@@ -255,7 +252,7 @@ pub mod actions {
             while i < num_players {
                 let player_address: ContractAddress = *players.at(i);
                 let player_data: Player = world.read_model(player_address);
-        
+
                 if player_data.is_dealer {
                     current_dealer_index = i;
                     found = true;
@@ -270,24 +267,46 @@ pub mod actions {
             };
 
             // Calculate the index of the next dealer
-            let next_dealer_index: usize = (current_dealer_index + 1) % num_players;
+            let mut next_dealer_index: usize = (current_dealer_index + 1) % num_players;
+            // save initial dealer index to prevent infinite loop
+            let mut initial_dealer_index: usize = current_dealer_index;
 
-            // Get the address of the next dealer
-            let next_dealer_address: ContractAddress = *players.at(next_dealer_index); 
+            let result = loop {
+                // Get the address of the next dealer
+                let next_dealer_address: ContractAddress = *players.at(next_dealer_index);
 
-            // Remove the is_dealer from the current dealer
-            let mut current_dealer: Player = world.read_model(*players.at(current_dealer_index));
-            current_dealer.is_dealer = false;
-            world.write_model(@current_dealer);
+                // Load the next dealer's data
+                let mut next_dealer: Player = world.read_model(next_dealer_address);
 
-            // Set the next dealer to is_dealer
-            let mut next_dealer: Player = world.read_model(next_dealer_address);
-            next_dealer.is_dealer = true;
-            world.write_model(@next_dealer);
+                // Check if the next dealer is in the round (assuming 'in_round' is a field in the
+                // Player struct)
+                if next_dealer.in_round {
+                    // Remove the is_dealer from the current dealer
+                    let mut current_dealer: Player = world
+                        .read_model(*players.at(current_dealer_index));
+                    current_dealer.is_dealer = false;
+                    world.write_model(@current_dealer);
 
-            // Return the next dealer
-            Option::Some(next_dealer)
+                    // Set the next dealer to is_dealer
+                    next_dealer.is_dealer = true;
+                    world.write_model(@next_dealer);
+
+                    // Return the next dealer
+                    break Option::Some(next_dealer);
+                }
+
+                // Move to the next player
+                next_dealer_index = (next_dealer_index + 1) % num_players;
+
+                // If we've come full circle, panic
+                if next_dealer_index == initial_dealer_index {
+                    assert(false, 'ONLY ONE PLAYER IN GAME');
+                    break Option::None;
+                }
+            };
+            result
         }
+
 
         fn _deal_hands(
             ref self: @ContractState, ref players: Array<Player>,
@@ -297,10 +316,11 @@ pub mod actions {
             let first_player = players.at(0);
             let game_id = first_player.extract_current_game_id();
 
-            for player in players.span() {
-                let current_game_id = player.extract_current_game_id();
-                assert(current_game_id == game_id, 'Players in different games');
-            };
+            for player in players
+                .span() {
+                    let current_game_id = player.extract_current_game_id();
+                    assert(current_game_id == game_id, 'Players in different games');
+                };
 
             let mut world = self.world_default();
             let game: Game = world.read_model(*game_id);
@@ -309,23 +329,25 @@ pub mod actions {
 
             // let mut deck: Deck = world.read_model(game_id);
             let mut current_index: usize = 0;
-            for mut player in players.span() {
-                let mut hand: Hand = world.read_model(*player.id);
-                hand.new_hand();
+            for mut player in players
+                .span() {
+                    let mut hand: Hand = world.read_model(*player.id);
+                    hand.new_hand();
 
-                for _ in 0_u8..2_u8 {
-                    let index = current_index % deck_ids.len();
-                    let deck_id: u64 = *deck_ids.at(index);
-                    let mut deck: Deck = world.read_model(deck_id);
-                    hand.add_card(deck.deal_card());
+                    for _ in 0_u8
+                        ..2_u8 {
+                            let index = current_index % deck_ids.len();
+                            let deck_id: u64 = *deck_ids.at(index);
+                            let mut deck: Deck = world.read_model(deck_id);
+                            hand.add_card(deck.deal_card());
 
-                    world.write_model(@deck); // should work, ;)
-                    current_index += 1;
+                            world.write_model(@deck); // should work, ;)
+                            current_index += 1;
+                        };
+
+                    world.write_model(@hand);
+                    world.write_model(player);
                 };
-
-                world.write_model(@hand);
-                world.write_model(player);
-            };
         }
 
         fn _resolve_hands(

@@ -3,6 +3,7 @@ cairo-version = "=2.9.2"
 name = "poker"
 version = "1.1.0"
 
+
 [cairo]
 sierra-replace-ids = true
 
@@ -12,7 +13,7 @@ spawn = "sozo execute dojo_starter-actions spawn --wait"    # scarb run spawn
 move = "sozo execute dojo_starter-actions move -c 1 --wait" # scarb run move
 
 [dependencies]
-dojo = { git = "https://github.com/dojoengine/dojo", tag = "v1.3.0" }
+dojo = { git = "https://github.com/dojoengine/dojo", tag = "v1.1.0" }
 
 [[target.starknet-contract]]
 build-external-contracts = ["dojo::world::world_contract::world"]

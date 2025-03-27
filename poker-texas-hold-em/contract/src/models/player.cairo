@@ -22,6 +22,7 @@ pub struct Player {
     locked: (bool, u64),
     is_dealer: bool,
     in_round: bool,
+    out: (u64, u64),
 }
 /// Write struct for player stats
 /// Include an alias, if necessary, and add it as key.
@@ -37,18 +38,23 @@ pub fn get_default_player() -> Player {
         locked: (false, 0),
         is_dealer: false,
         in_round: false,
+        out: (0, 0),
     }
 }
 
 #[generate_trait]
 pub impl PlayerImpl of PlayerTrait {
-    fn exit(ref self: Player) {
+    fn exit(ref self: Player, out: Option<(u64, u64)>) {
         let (is_locked, _) = self.locked;
         assert(is_locked, 'CANNOT EXIT, PLAYER NOT LOCKED');
         self.current_bet = 0;
         self.is_dealer = false;
         self.in_round = false;
         self.locked = (false, 0);
+        self.out = (0, 0);
+        if let Option::Some(val) = out {
+            self.out = val;
+        }
     }
 
     fn enter(ref self: Player, ref game: Game) {
@@ -61,7 +67,10 @@ pub impl PlayerImpl of PlayerTrait {
         assert(!game.in_progress, GameErrors::GAME_ALREADY_STARTED);
         assert(game.is_allowable(), GameErrors::ENTRY_DISALLOWED);
 
-        game.players.append(self.id);
+        if (game.id, game.reshuffled) != self.out {
+            // append. Player doesn't exist in the game
+            game.players.append(self.id);
+        } // should work.
         self.locked = (true, game.id);
         self.in_round = true;
     }

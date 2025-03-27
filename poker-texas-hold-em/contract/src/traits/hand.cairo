@@ -56,8 +56,8 @@ pub impl HandImpl of HandTrait {
                 current_winning_hand = hand;
                 // append details into `winning_hands` -- extracted using a bool variables
                 // `hands_changed`
-                // the hands has been changed, set to true
-                hands_changed(ref winning_hands);
+                // the hands have been changed
+                winning_hands = array![]
                 // update the necessary arrays here.
 
             } else if current_rank == highest_rank {
@@ -81,7 +81,7 @@ pub impl HandImpl of HandTrait {
                 // is true, if not, add only the kicker hand to the Array. For more than two
                 // kickers, arrange the array accordingly. might be implemented by someone else.
                 // here, hands have been changed, right?
-                hands_changed(ref winning_hands);
+                winning_hands = array![]
                 // do the necessary updates.
             }
         };
@@ -115,14 +115,5 @@ pub impl HandImpl of HandTrait {
     fn default() -> Hand {
         Hand { player: Zero::zero(), cards: array![] }
     }
-}
-
-/// Private Helper Functions
-/// // To be audited
-fn hands_changed(ref winning_hands: Array<Hand>) {
-    for _ in 0..winning_hands.len() {
-        // discard all existing objects in `winning_hands`. A clean slate.
-        winning_hands.pop_front().unwrap();
-    };
 }
 

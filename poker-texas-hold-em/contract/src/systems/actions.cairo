@@ -309,7 +309,7 @@ pub mod actions {
 
 
         fn _deal_hands(
-            ref self: @ContractState, ref players: Array<Player>,
+            ref self: ContractState, ref players: Array<Player>,
         ) { // deal hands for each player in the array
             assert(!players.is_empty(), 'Players cannot be empty');
 
@@ -351,7 +351,7 @@ pub mod actions {
         }
 
         fn _resolve_hands(
-            self: @ContractState, ref players: Array<Player>,
+            ref self: ContractState, ref players: Array<Player>,
         ) { // after each round, resolve all players hands by removing all cards from each hand
             // and perhaps re-initialize and shuffle the deck.
             // Extract current game_id from each player (ensuring all players are in the same game)
@@ -419,9 +419,11 @@ pub mod actions {
         }
 
         fn _resolve_round(ref self: ContractState, game_id: u64) { // should call resolve_hands()
+        // remember to call resolve_hands and pass an array of players that are in_round
         // should write back the player and the game to the world
         // all players should be set back in the next round
         // increment number of rounds,
+        // resolve the game variables
         // emit an event that a game_id round is open for others to join, only if necessary game
         // param checks have been cleared.
         }

@@ -34,6 +34,7 @@ pub impl HandImpl of HandTrait {
         (Self::default(), 0)
     }
 
+    /// @Akshola00
     /// This function will compare the hands of all the players and return an array of Player
     /// contains the player with the winning hand
     /// this is only possible if the `kick_split` in game_params is true
@@ -44,7 +45,7 @@ pub impl HandImpl of HandTrait {
         // kicker there-in that there are times two or more players have the same hand rank, so we
         // check the value of each card in hand.
 
-        // TODO: Ace might be changed to a higher value.
+        // TODO: Ace might be ccurrent_winning_handhanged to a higher value.
         let mut highest_rank: u16 = 0;
         let mut current_winning_hand: Hand = Self::default();
         // let mut winning_players: Array<Option<Player>> = array![];
@@ -59,7 +60,7 @@ pub impl HandImpl of HandTrait {
                 // the hands has been changed, set to true
                 hands_changed(ref winning_hands);
                 // update the necessary arrays here.
-
+                winning_hands.append(new_hand);
             } else if current_rank == highest_rank {
                 // implement kicker. Only works for the current_winner variable
                 // retrieve the former current_winner already stored and the current player,
@@ -81,7 +82,15 @@ pub impl HandImpl of HandTrait {
                 // is true, if not, add only the kicker hand to the Array. For more than two
                 // kickers, arrange the array accordingly. might be implemented by someone else.
                 // here, hands have been changed, right?
-                hands_changed(ref winning_hands);
+                if game_params.kicker_split {
+                    // In case of ties and kicker_split is enabled, add both hands
+                    winning_hands.append(new_hand);
+                    winning_hands.append(current_winning_hand);
+                } else {
+                    // When kicker_split is disabled, keep existing winning hand
+                    // TODO: Replace this with proper kicker comparison
+                    winning_hands.append(new_hand);
+                }
                 // do the necessary updates.
             }
         };

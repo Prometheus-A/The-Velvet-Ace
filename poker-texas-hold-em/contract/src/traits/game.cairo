@@ -52,6 +52,8 @@ pub impl GameImpl of GameTrait {
             // Then check if game has a free spot
             && *self.current_player_count < self.players.len()
     }
+
+    fn append() {}
 }
 
 fn get_default_game_params() -> GameParams {

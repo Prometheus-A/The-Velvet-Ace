@@ -16,7 +16,7 @@ fn generate_random(span: u32) -> u32 {
 
 #[generate_trait]
 pub impl DeckImpl of DeckTrait {
-    fn new_deck(ref self: Deck) -> Deck {
+    fn new_deck(ref self: Deck) {
         let mut cards: Array<Card> = array![];
         for suit in 0_u8..4_u8 {
             for value in 1_u16..14_u16 {
@@ -25,7 +25,7 @@ pub impl DeckImpl of DeckTrait {
             };
         };
 
-        Deck { id: self.id, cards }
+        self.cards = cards;
     }
 
     fn shuffle(ref self: Deck) {
@@ -47,12 +47,7 @@ pub impl DeckImpl of DeckTrait {
     }
 
     fn deal_card(ref self: Deck) -> Card {
-        let previous_size = self.cards.len();
-        // assert_ne(previous_size, 0);
-        let card: Card = self.cards.pop_front().unwrap();
-        // assert_gt!(previous_size, deck.cards.len());
-
-        card
+        self.cards.pop_front().unwrap()
     }
 }
 // assert after shuffling, that all cards remain distinct, and the deck is still 52 cards

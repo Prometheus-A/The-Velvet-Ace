@@ -143,8 +143,8 @@ pub impl HandImpl of HandTrait {
                 current_winning_hand = hand;
                 // append details into `winning_hands` -- extracted using a bool variables
                 // `hands_changed`
-                // the hands has been changed, set to true
-                hands_changed(ref winning_hands);
+                // the hands have been changed
+                winning_hands = array![]
                 // update the necessary arrays here.
 
             } else if current_rank == highest_rank {
@@ -168,7 +168,7 @@ pub impl HandImpl of HandTrait {
                 // is true, if not, add only the kicker hand to the Array. For more than two
                 // kickers, arrange the array accordingly. might be implemented by someone else.
                 // here, hands have been changed, right?
-                hands_changed(ref winning_hands);
+                winning_hands = array![]
                 // do the necessary updates.
             }
         };
@@ -204,15 +204,24 @@ pub impl HandImpl of HandTrait {
     }
 }
 
-/// Private Helper Functions
-/// // To be audited
-fn hands_changed(ref winning_hands: Array<Hand>) {
-    for _ in 0..winning_hands.len() {
-        // discard all existing objects in `winning_hands`. A clean slate.
-        winning_hands.pop_front().unwrap();
-    };
+/// Take in a HandRank::<const>, a u16 value
+/// Takes in an array of hands of equal HandRank
+/// To increase optimization, the ranks of each hand are never checked here, 
+/// but are assumed to be equal
+/// 
+/// returns a tuple of an array of the winning hands, and an array of the cards that did the kicking
+/// The card in the winning hands are always equal
+fn extract_kicker(hands: Array<Hand>, hand_rank: u16) -> (Array<Hand>, Array<Card>) {
+
+    // Implement kicker based on hand_rank
+    // some hand_ranks have a different kicker implementation from the rest
+    (array![], array![])
+
 }
 
+// for the test
+// assert that the array of kicking cards are present in the winning hands
+    // .. or make
 /// Generates all k-card combinations from a given array of cards
 ///
 /// This function creates all possible combinations of `k` cards from the input array

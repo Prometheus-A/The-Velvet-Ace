@@ -59,6 +59,12 @@ pub mod actions {
     pub const DECK: felt252 = 'DECK';
     pub const MAX_NO_OF_CHIPS: u128 = 100000; /// for test, 1 chip = 1 usd.
 
+    #[derive(Drop, Clone, Serde, starknet::Event)]
+    struct RoundResolvedEvent {
+        game_id: u64,
+        can_join: bool
+    }
+
     #[abi(embed_v0)]
     impl ActionsImpl of super::IActions<ContractState> {
         fn initialize_game(ref self: ContractState, game_params: Option<GameParams>) -> u64 {
@@ -249,10 +255,11 @@ pub mod actions {
             let first_player = players.at(0);
             let game_id = first_player.extract_current_game_id();
 
-            for player in players.span() {
-                let current_game_id = player.extract_current_game_id();
-                assert(current_game_id == game_id, 'Players in different games');
-            };
+            for player in players
+                .span() {
+                    let current_game_id = player.extract_current_game_id();
+                    assert(current_game_id == game_id, 'Players in different games');
+                };
 
             let mut world = self.world_default();
             let game: Game = world.read_model(*game_id);
@@ -261,23 +268,25 @@ pub mod actions {
 
             // let mut deck: Deck = world.read_model(game_id);
             let mut current_index: usize = 0;
-            for mut player in players.span() {
-                let mut hand: Hand = world.read_model(*player.id);
-                hand.new_hand();
+            for mut player in players
+                .span() {
+                    let mut hand: Hand = world.read_model(*player.id);
+                    hand.new_hand();
 
-                for _ in 0_u8..2_u8 {
-                    let index = current_index % deck_ids.len();
-                    let deck_id: u64 = *deck_ids.at(index);
-                    let mut deck: Deck = world.read_model(deck_id);
-                    hand.add_card(deck.deal_card());
+                    for _ in 0_u8
+                        ..2_u8 {
+                            let index = current_index % deck_ids.len();
+                            let deck_id: u64 = *deck_ids.at(index);
+                            let mut deck: Deck = world.read_model(deck_id);
+                            hand.add_card(deck.deal_card());
 
-                    world.write_model(@deck); // should work, ;)
-                    current_index += 1;
+                            world.write_model(@deck); // should work, ;)
+                            current_index += 1;
+                        };
+
+                    world.write_model(@hand);
+                    world.write_model(player);
                 };
-
-                world.write_model(@hand);
-                world.write_model(player);
-            };
         }
 
         fn _resolve_hands(
@@ -348,17 +357,124 @@ pub mod actions {
             };
         }
 
+        /// Resolves the current round and prepares the game for the next round
+        ///
+        /// This function:
+        /// 1. Resets player hands and decks by calling _resolve_hands
+        /// 2. Updates game state (increments round counter, resets flags)
+        /// 3. Resets player states for the next round
+        /// 4. Checks if new players can join based on game parameters
+        /// 5. Emits appropriate events
+        ///
+        /// # Arguments
+        /// * `game_id` - The ID of the game whose round is being resolved
         fn _resolve_round(ref self: ContractState, game_id: u64) { // should call resolve_hands()
-        // should write back the player and the game to the world
-        // all players should be set back in the next round
-        // increment number of rounds,
-        // emit an event that a game_id round is open for others to join, only if necessary game
-        // param checks have been cleared.
+            // should write back the player and the game to the world
+            // all players should be set back in the next round
+            // increment number of rounds,
+            // emit an event that a game_id round is open for others to join, only if necessary game
+            // param checks have been cleared.
+
+            // Get world storage
+            let mut world = self.world_default();
+
+            // Read the game from world storage
+            let mut game: Game = world.read_model(game_id);
+
+            // Ensure game exists and is in progress
+            assert(!game.id.is_zero(), 'Game does not exist');
+            assert(game.in_progress, 'Game not in progress');
+            assert(game.round_in_progress, 'Round not in progress');
+
+            // Collect all players from the game
+            let mut players: Array<Player> = array![];
+            for player_address in game
+                .players
+                .span() {
+                    let player: Player = world.read_model(*player_address);
+                    players.append(player);
+                }
+
+            // Reset player hands and decks
+            self._resolve_hands(ref players);
+
+            // Update game state for the next round
+            game.current_round += 1;
+            game.round_in_progress = false;
+            game.community_cards = array![]; // Clear community cards
+            game.current_bet = 0; // Reset current bet
+
+            // Reset player states for the next round
+            for mut player in players
+                .span() {
+                    // Only set in_round to true for players still in the game (not folded)
+                    if player.is_in_game(@game_id) {
+                        player.current_bet = 0;
+                        player.in_round = true;
+                        world.write_model(@player);
+                    }
+                }
+
+            // Check if the game allows new players to join based on game parameters
+            let can_join = game.is_allowable();
+
+            // Update the game in the world
+            world.write_model(@game);
+            
+            // Emit an event when round is resolved
+            // Emit the appropriate event based on whether new players can join
+            world.emit(RoundResolvedEvent { game_id: game_id, can_join: can_join });
         }
 
-        fn _deal_community_card(
-            ref self: ContractState, game_id: u64,
-        ) { // Should return the array of cards?
+        /// Deals a community card to the game board
+        ///
+        /// This function:
+        /// 1. Verifies that the game state allows adding a community card
+        /// 2. Selects a deck to deal from
+        /// 3. Deals a card and adds it to the community cards
+        ///
+        /// # Arguments
+        /// * `game_id` - The ID of the game to deal a community card to
+        ///
+        /// # Returns
+        /// * Array of Card - The updated community cards
+        // fn _deal_community_card(ref self: ContractState, game_id: u64) -> Array<Card> {
+        //     // Get world storage
+        //     let mut world = self.world_default();
+
+        //     // Read the game from world storage
+        //     let mut game: Game = world.read_model(game_id);
+
+        //     // Ensure game exists and is in a valid state
+        //     assert(!game.id.is_zero(), 'Game does not exist');
+        //     assert(game.in_progress, 'Game not in progress');
+        //     assert(game.round_in_progress, 'Round not in progress');
+
+        //     // Check if we can add more community cards (max 5)
+        //     assert(game.community_cards.len() < 5, 'Community cards full');
+
+        //     // Get a deck to deal from
+        //     let deck_ids = game.deck;
+        //     assert(!deck_ids.is_empty(), 'No decks available');
+
+        //     // Cyclically select a deck based on the current community card count
+        //     // This distributes card dealing across all available decks
+        //     let deck_index = game.community_cards.len() % deck_ids.len();
+        //     let deck_id = *deck_ids.at(deck_index);
+        //     let mut deck: Deck = world.read_model(deck_id);
+
+        //     // Deal a card from the deck
+        //     let card = deck.deal_card();
+
+        //     // Add card to community cards
+        //     game.community_cards.append(card);
+
+        //     // Update the deck and game in the world
+        //     world.write_model(@deck);
+        //     world.write_model(@game);
+
+        //     // Return the updated community cards
+        //     game.community_cards
         }
     }
 }

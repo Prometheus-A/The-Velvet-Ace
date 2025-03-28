@@ -18,12 +18,14 @@ fn generate_random(span: u32) -> u32 {
 pub impl DeckImpl of DeckTrait {
     fn new_deck(ref self: Deck) -> Deck {
         let mut cards: Array<Card> = array![];
-        for suit in 0_u8..4_u8 {
-            for value in 1_u16..14_u16 {
-                let card: Card = Card { suit, value };
-                cards.append(card);
+        for suit in 0_u8
+            ..4_u8 {
+                for value in 1_u16
+                    ..14_u16 {
+                        let card: Card = Card { suit, value };
+                        cards.append(card);
+                    };
             };
-        };
 
         Deck { id: self.id, cards }
     }
@@ -32,15 +34,16 @@ pub impl DeckImpl of DeckTrait {
         let mut cards: Array<Card> = self.cards;
         let mut new_cards: Array<Card> = array![];
         let mut verifier: Felt252Dict<bool> = Default::default();
-        for _ in cards.len()..0 {
-            let mut rand = generate_random(DEFAULT_DECK_LENGTH);
-            while verifier.get(rand.into()) {
-                rand = generate_random(DEFAULT_DECK_LENGTH);
+        for _ in cards.len()
+            ..0 {
+                let mut rand = generate_random(DEFAULT_DECK_LENGTH);
+                while verifier.get(rand.into()) {
+                    rand = generate_random(DEFAULT_DECK_LENGTH);
+                };
+                let temp: Card = *cards.at(rand);
+                new_cards.append(temp);
+                verifier.insert(rand.into(), true);
             };
-            let temp: Card = *cards.at(rand);
-            new_cards.append(temp);
-            verifier.insert(rand.into(), true);
-        };
 
         self.cards = new_cards.clone();
         // deck

@@ -3,6 +3,7 @@ import { ParsedEntity, QueryBuilder } from "@dojoengine/sdk";
 import { getEntityIdFromKeys } from "@dojoengine/utils";
 import { AccountInterface, addAddressPadding, CairoCustomEnum } from "starknet";
 
+
 import { ModelsMapping, SchemaType } from "./typescript/models.gen.ts";
 import { useSystemCalls } from "./useSystemCalls.ts";
 import { useAccount } from "@starknet-react/core";
@@ -25,7 +26,7 @@ function App() {
     const { spawn } = useSystemCalls();
 
     const entityId = useMemo(() => {
-        if (account) {
+            if (account) {
             return getEntityIdFromKeys([BigInt(account.address)]);
         }
         return BigInt(0);
@@ -35,7 +36,7 @@ function App() {
         let unsubscribe: (() => void) | undefined;
 
         const subscribe = async (account: AccountInterface) => {
-            const subscription = await sdk.subscribeEntityQuery({
+                const subscription = await sdk.subscribeEntityQuery({
                 query: new QueryBuilder<SchemaType>()
                     .namespace("dojo_starter", (n) =>
                         n
@@ -54,10 +55,10 @@ function App() {
                     )
                     .build(),
                 callback: ({ error, data }) => {
-                    if (error) {
+                        if (error) {
                         console.error("Error setting up entity sync:", error);
                     } else if (
-                        data &&
+                            data &&
                         (data[0] as ParsedEntity<SchemaType>).entityId !== "0x0"
                     ) {
                         state.updateEntity(data[0] as ParsedEntity<SchemaType>);
@@ -69,21 +70,21 @@ function App() {
         };
 
         if (account) {
-            subscribe(account);
-        }
+                subscribe(account);
+            }
 
-        return () => {
-            if (unsubscribe) {
+            return () => {
+                    if (unsubscribe) {
                 unsubscribe();
             }
         };
     }, [sdk, account]);
 
     useEffect(() => {
-        const fetchEntities = async (account: AccountInterface) => {
+            const fetchEntities = async (account: AccountInterface) => {
             try {
-                await sdk.getEntities({
-                    query: new QueryBuilder<SchemaType>()
+                    await sdk.getEntities({
+                            query: new QueryBuilder<SchemaType>()
                         .namespace("dojo_starter", (n) =>
                             n.entity("Moves", (e) =>
                                 e.eq(
@@ -96,20 +97,20 @@ function App() {
                     callback: (resp) => {
                         if (resp.error) {
                             console.error(
-                                "resp.error.message:",
+                                    "resp.error.message:",
                                 resp.error.message
                             );
                             return;
                         }
                         if (resp.data) {
-                            state.setEntities(
+                                state.setEntities(
                                 resp.data as ParsedEntity<SchemaType>[]
                             );
                         }
                     },
                 });
             } catch (error) {
-                console.error("Error querying entities:", error);
+                    console.error("Error querying entities:", error);
             }
         };
 
@@ -122,7 +123,7 @@ function App() {
     const position = useModel(entityId as string, ModelsMapping.Position);
 
     return (
-        <div className="bg-black min-h-screen w-full p-4 sm:p-8">
+            <div className="bg-black min-h-screen w-full p-4 sm:p-8">
             <div className="max-w-7xl mx-auto">
                 <WalletAccount />
 
@@ -166,30 +167,30 @@ function App() {
                                 },
                                 {
                                     direction: new CairoCustomEnum({
-                                        Left: "()",
-                                    }),
-                                    label: "←",
-                                    col: "col-start-1",
-                                },
-                                {
+                                            Left: "()",
+                                        }),
+                                        label: "←",
+                                        col: "col-start-1",
+                                    },
+                                    {
+                                            direction: new CairoCustomEnum({
+                                                    Right: "()",
+                                                }),
+                                                label: "→",
+                                                col: "col-start-3",
+                                            },
+                                            {
                                     direction: new CairoCustomEnum({
-                                        Right: "()",
-                                    }),
-                                    label: "→",
-                                    col: "col-start-3",
-                                },
-                                {
-                                    direction: new CairoCustomEnum({
-                                        Down: "()",
-                                    }),
-                                    label: "↓",
-                                    col: "col-start-2",
-                                },
-                            ].map(({ direction, label, col }, idx) => (
-                                <button
-                                    className={`${col} h-12 w-12 bg-gray-600 rounded-full shadow-md active:shadow-inner active:bg-gray-500 focus:outline-none text-2xl font-bold text-gray-200`}
-                                    key={idx}
-                                    onClick={async () => {
+                                            Down: "()",
+                                        }),
+                                        label: "↓",
+                                        col: "col-start-2",
+                                    },
+                                ].map(({ direction, label, col }, idx) => (
+                                        <button
+                                            className={`${col} h-12 w-12 bg-gray-600 rounded-full shadow-md active:shadow-inner active:bg-gray-500 focus:outline-none text-2xl font-bold text-gray-200`}
+                                            key={idx}
+                                            onClick={async () => {
                                         await client.actions.move(
                                             account!,
                                             direction
@@ -232,16 +233,16 @@ function App() {
                         </thead>
                         <tbody>
                             {Object.entries(entities).map(
-                                ([entityId, entity]) => {
-                                    const position =
-                                        entity.models.dojo_starter.Position;
-                                    const moves =
-                                        entity.models.dojo_starter.Moves;
-                                    const lastDirection =
-                                        moves?.last_direction?.isSome()
-                                            ? moves.last_direction?.unwrap()
-                                            : "N/A";
-
+                                    ([entityId, entity]) => {
+                                            const position =
+                                                entity.models.dojo_starter.Position;
+                                            const moves =
+                                                entity.models.dojo_starter.Moves;
+                                            const lastDirection =
+                                                moves?.last_direction?.isSome()
+                                                    ? moves.last_direction?.unwrap()
+                                                    : "N/A";
+        
                                     return (
                                         <tr
                                             key={entityId}
@@ -286,5 +287,5 @@ function App() {
         </div>
     );
 }
-
 export default App;
+

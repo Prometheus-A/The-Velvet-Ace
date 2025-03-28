@@ -56,3 +56,4 @@ async function main() {
 main().catch((error) => {
     console.error("Failed to initialize the application:", error);
 });
+

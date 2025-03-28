@@ -420,61 +420,60 @@ pub mod actions {
 
             // Update the game in the world
             world.write_model(@game);
-            
+
             // Emit an event when round is resolved
             // Emit the appropriate event based on whether new players can join
             world.emit(RoundResolvedEvent { game_id: game_id, can_join: can_join });
         }
-
         /// Deals a community card to the game board
-        ///
-        /// This function:
-        /// 1. Verifies that the game state allows adding a community card
-        /// 2. Selects a deck to deal from
-        /// 3. Deals a card and adds it to the community cards
-        ///
-        /// # Arguments
-        /// * `game_id` - The ID of the game to deal a community card to
-        ///
-        /// # Returns
-        /// * Array of Card - The updated community cards
-        // fn _deal_community_card(ref self: ContractState, game_id: u64) -> Array<Card> {
-        //     // Get world storage
-        //     let mut world = self.world_default();
+    ///
+    /// This function:
+    /// 1. Verifies that the game state allows adding a community card
+    /// 2. Selects a deck to deal from
+    /// 3. Deals a card and adds it to the community cards
+    ///
+    /// # Arguments
+    /// * `game_id` - The ID of the game to deal a community card to
+    ///
+    /// # Returns
+    /// * Array of Card - The updated community cards
+    // fn _deal_community_card(ref self: ContractState, game_id: u64) -> Array<Card> {
+    //     // Get world storage
+    //     let mut world = self.world_default();
 
         //     // Read the game from world storage
-        //     let mut game: Game = world.read_model(game_id);
+    //     let mut game: Game = world.read_model(game_id);
 
         //     // Ensure game exists and is in a valid state
-        //     assert(!game.id.is_zero(), 'Game does not exist');
-        //     assert(game.in_progress, 'Game not in progress');
-        //     assert(game.round_in_progress, 'Round not in progress');
+    //     assert(!game.id.is_zero(), 'Game does not exist');
+    //     assert(game.in_progress, 'Game not in progress');
+    //     assert(game.round_in_progress, 'Round not in progress');
 
         //     // Check if we can add more community cards (max 5)
-        //     assert(game.community_cards.len() < 5, 'Community cards full');
+    //     assert(game.community_cards.len() < 5, 'Community cards full');
 
         //     // Get a deck to deal from
-        //     let deck_ids = game.deck;
-        //     assert(!deck_ids.is_empty(), 'No decks available');
+    //     let deck_ids = game.deck;
+    //     assert(!deck_ids.is_empty(), 'No decks available');
 
         //     // Cyclically select a deck based on the current community card count
-        //     // This distributes card dealing across all available decks
-        //     let deck_index = game.community_cards.len() % deck_ids.len();
-        //     let deck_id = *deck_ids.at(deck_index);
-        //     let mut deck: Deck = world.read_model(deck_id);
+    //     // This distributes card dealing across all available decks
+    //     let deck_index = game.community_cards.len() % deck_ids.len();
+    //     let deck_id = *deck_ids.at(deck_index);
+    //     let mut deck: Deck = world.read_model(deck_id);
 
         //     // Deal a card from the deck
-        //     let card = deck.deal_card();
+    //     let card = deck.deal_card();
 
         //     // Add card to community cards
-        //     game.community_cards.append(card);
+    //     game.community_cards.append(card);
 
         //     // Update the deck and game in the world
-        //     world.write_model(@deck);
-        //     world.write_model(@game);
+    //     world.write_model(@deck);
+    //     world.write_model(@game);
 
         //     // Return the updated community cards
-        //     game.community_cards
-        }
+    //     game.community_cards
+    // }
     }
 }

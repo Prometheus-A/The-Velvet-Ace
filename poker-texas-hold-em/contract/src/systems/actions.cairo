@@ -43,9 +43,8 @@ trait IActions<TContractState> {
 // dojo decorator
 #[dojo::contract]
 pub mod actions {
-    use starknet::{ContractAddress, get_caller_address};
-    use dojo::model::{ModelStorage, ModelValueStorage};
     use dojo::event::EventStorage;
+    use dojo::model::{ModelStorage, ModelValueStorage};
     // use dojo::world::{WorldStorage, WorldStorageTrait};
 
     use poker::models::base::{GameErrors, Id};
@@ -54,6 +53,7 @@ pub mod actions {
     use poker::models::game::{Game, GameMode, GameParams, GameTrait};
     use poker::models::hand::{Hand, HandTrait};
     use poker::models::player::{Player, PlayerTrait, get_default_player};
+    use starknet::{ContractAddress, get_caller_address};
 
     pub const GAME: felt252 = 'GAME';
     pub const DECK: felt252 = 'DECK';
@@ -95,28 +95,61 @@ pub mod actions {
             // Save available decks
             for deck in decks {
                 world.write_model(@deck);
-            };
+            }
 
             game_id
         }
 
-        fn join_game(
-            ref self: ContractState, game_id: u64,
-        ) { // check the game in_progress and has_ended values
-        // check the number
-        // if has_ended, panic
-        // if in progress, then further checks in the gameparams are done, based on the game mode
-        // and round in progress. optimize code as good as possible
-        // init a player (check if the player exists, if not, create a new one)
-        // call the internal function player_in_game
-        // check the number of chips
-        // for each join, check the max no. of players allowed in the game params of the game_id, if
-        // reached, start the session.
-        // starting the session involves changing some variables in the game and dealing cards,
-        // basically initializing the game.
-        // set player_in_round to true
+        fn join_game(ref self: ContractState, game_id: u64) {
+            // Get the caller address
+            let caller: ContractAddress = get_caller_address();
+            let mut world = self.world_default();
 
-        // when max number of participants have been reached, emit a GameStarted event
+            // Check if the game exists and is in a valid state
+            let mut game: Game = world.read_model(game_id);
+            assert(game.is_initialized(), GameErrors::GAME_NOT_INITIALIZED);
+            assert(!game.has_ended, GameErrors::GAME_ALREADY_ENDED);
+            assert(!game.in_progress, GameErrors::GAME_ALREADY_STARTED);
+            assert(game.is_allowable(), GameErrors::ENTRY_DISALLOWED);
+
+            // Get player
+            let mut player: Player = world.read_model(caller);
+
+            // If new player (id is zero), initialize with default values and set ID
+            if player.id.is_zero() {
+                player = get_default_player();
+                player.id = caller;
+            }
+
+            // Player enters the game (this function does all the necessary checks)
+            player.enter(ref game);
+
+            // Check if max players reached and start the game if so
+            let current_players = game.players.len();
+            let max_players = game.params.max_players;
+
+            if current_players >= max_players {
+                // Start the game session
+                game.in_progress = true;
+
+                // Create an array to hold all players in the game
+                let mut players: Array<Player> = ArrayTrait::new();
+
+                // Fetch all players from their addresses
+                for player_address in game.players.span() {
+                    let game_player: Player = world.read_model(*player_address);
+                    players.append(game_player);
+                }
+
+                // Deal initial hands to all players
+                self._deal_hands(ref players);
+                // Note: Game has officially started
+            // Ideally, we would emit a GameStarted event here
+            }
+
+            // Save updated player and game state
+            world.write_model(@player);
+            world.write_model(@game);
         }
 
         fn leave_game(ref self: ContractState) { // assert if the player exists
@@ -260,12 +293,12 @@ pub mod actions {
                     break;
                 }
                 i += 1;
-            };
+            }
 
             // If no dealer is found, return None
             if !found {
                 return Option::None;
-            };
+            }
 
             // Calculate the index of the next dealer
             let mut next_dealer_index: usize = (current_dealer_index + 1) % num_players;
@@ -319,7 +352,7 @@ pub mod actions {
             for player in players.span() {
                 let current_game_id = player.extract_current_game_id();
                 assert(current_game_id == game_id, 'Players in different games');
-            };
+            }
 
             let mut world = self.world_default();
             let game: Game = world.read_model(*game_id);
@@ -340,7 +373,7 @@ pub mod actions {
 
                     world.write_model(@deck); // should work, ;)
                     current_index += 1;
-                };
+                }
 
                 world.write_model(@hand);
                 world.write_model(player);
@@ -380,7 +413,7 @@ pub mod actions {
                 assert(*player_game_id == game_id, 'Players in different games');
 
                 i += 1;
-            };
+            }
 
             // Get the world storage
             let mut world = self.world_default();
@@ -397,7 +430,7 @@ pub mod actions {
                 deck.new_deck();
                 deck.shuffle();
                 world.write_model(@deck); // should work, I guess.
-            };
+            }
 
             // Clear each player's hand and update it in the world
             let mut j: u32 = 0;

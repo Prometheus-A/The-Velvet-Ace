@@ -18,7 +18,7 @@ pub trait HandTrait {
     fn reveal(self: @Hand) -> Span<Card>;
     fn add_card(ref self: Hand, card: Card);
     // TODO, add function that shows cards in bytearray, array of tuple (suit, and value)
-// add to card trait.
+    // add to card trait.
 }
 
 pub impl HandImpl of HandTrait {
@@ -43,16 +43,6 @@ pub impl HandImpl of HandTrait {
     /// # Author
     /// [@pope-h]
     fn rank(self: @Hand, community_cards: Array<Card>) -> (Hand, u16) {
-        // use HandRank to get the rank for a hand of one player
-        // return using the HandRank::<the const>, and not the raw u16 value
-        // compute the hand that makes up this rank you have computed
-        // set the player value (a CA) to the player's CA with the particular hand
-        // return both values in a tuple
-        // document the function.
-
-        // this function can be called externally in the future.
-        // (Self::default(), 0) // Temporary return value
-
         // Combine player's hand cards with community cards for evaluation
         let mut all_cards: Array<Card> = array![];
 
@@ -127,49 +117,25 @@ pub impl HandImpl of HandTrait {
     fn compare_hands(
         hands: Array<Hand>, community_cards: Array<Card>, game_params: GameParams,
     ) -> Span<Hand> {
-        // for hand comparisons, there should be a kicker
-        // kicker there-in that there are times two or more players have the same hand rank, so we
-        // check the value of each card in hand.
-
-        // TODO: Ace might be changed to a higher value.
         let mut highest_rank: u16 = 0;
         let mut current_winning_hand: Hand = Self::default();
-        // let mut winning_players: Array<Option<Player>> = array![];
         let mut winning_hands: Array<Hand> = array![];
+
         for hand in hands {
             let (new_hand, current_rank) = hand.rank(community_cards.clone());
             if current_rank > highest_rank {
                 highest_rank = current_rank;
                 current_winning_hand = hand;
-                // append details into `winning_hands` -- extracted using a bool variables
-                // `hands_changed`
-                // the hands have been changed
-                winning_hands = array![]
-                // update the necessary arrays here.
-
+                winning_hands = array![hand];
             } else if current_rank == highest_rank {
-                // implement kicker. Only works for the current_winner variable
-                // retrieve the former current_winner already stored and the current player,
-                // and compare both hands. This should be done in another internal function and be
-                // called here.
-                // The function should take in both `hand` and `current_winning_hand`, should return
-                // the winning hand Implementation would be left to you
-                // compare the player's CA in the returned hand to the current `winning_hand`
-                // If not equal, update both `current_winner` and `winning_hand`
-
-                // TODO: Check for a straight. The kicker is different for a straight. The person
-                // with the highest straight wins (compare only the last straight.) The function
-                // called here might take in a `hand_rank` u16 variable to check for this.
-
-                // in rare case scenarios, a pot can be split based on the game params
-                // here, an array shall be used. check kicker_split, if true, add two same hands in
-                // the array Add the kicker hand first into the array, before the other...that's if
-                // `game_params.kicker_split`
-                // is true, if not, add only the kicker hand to the Array. For more than two
-                // kickers, arrange the array accordingly. might be implemented by someone else.
-                // here, hands have been changed, right?
-                winning_hands = array![]
-                // do the necessary updates.
+                // Use extract_kicker to compare hands of same rank
+                let (winners, _) = extract_kicker(array![current_winning_hand, hand], highest_rank);
+                if winners.len() > 1 && game_params.kicker_split {
+                    winning_hands.append(hand);
+                } else if winners.len() == 1 && winners[0].player == hand.player {
+                    winning_hands = array![hand];
+                    current_winning_hand = hand;
+                }
             }
         };
 
@@ -181,21 +147,16 @@ pub impl HandImpl of HandTrait {
     }
 
     fn remove_card(ref self: Hand, pos: usize) -> Card {
-        // ensure card is removed.
-        // though I haven't seen a need for this function.
         assert(self.cards.len() > 0, 'HAND IS EMPTY');
         assert(pos < self.cards.len(), 'POSITION OUT OF BOUNDS');
-        // TODO: find a way to remove the card from that position
-        // Use CardTrait or something
         Card { suit: 0, value: 0 }
     }
 
     fn reveal(self: @Hand) -> Span<Card> {
-        // TODO lol
         array![].span()
     }
 
-    fn add_card(ref self: Hand, card: Card) { // ensure card is added.
+    fn add_card(ref self: Hand, card: Card) {
         self.cards.append(card);
     }
 
@@ -204,40 +165,182 @@ pub impl HandImpl of HandTrait {
     }
 }
 
-/// Take in a HandRank::<const>, a u16 value
-/// Takes in an array of hands of equal HandRank
-/// To increase optimization, the ranks of each hand are never checked here,
-/// but are assumed to be equal
-///
-/// returns a tuple of an array of the winning hands, and an array of the cards that did the kicking
-/// The card in the winning hands are always equal
-fn extract_kicker(hands: Array<Hand>, hand_rank: u16) -> (Array<Hand>, Array<Card>) {
-    // Implement kicker based on hand_rank
-    // some hand_ranks have a different kicker implementation from the rest
-    (array![], array![])
-}
-
-// for the test
-// assert that the array of kicking cards are present in the winning hands
-// .. or make
-/// Generates all k-card combinations from a given array of cards
-///
-/// This function creates all possible combinations of `k` cards from the input array
-/// using a bitwise subset generation approach.
-///
+/// @pope-h, @gelluisaac
+/// Compares hands of the same rank and returns the winning hand(s) with their kicker cards
+/// 
 /// # Arguments
-/// * `cards` - An array of cards to generate combinations from
-/// * `k` - The number of cards in each combination
+/// * `hands` - Array of Hand structs to compare (must all be of same rank)
+/// * `hand_rank` - The HandRank value indicating what type of hands we're comparing
 ///
 /// # Returns
-/// An array of arrays, where each inner array is a combination of `k` cards
-///
-/// # Author
-/// [@pope-h]
+/// A tuple containing:
+/// 1. Array of winning hands (can be multiple in case of ties)
+/// 2. Array of corresponding kicker cards for each winning hand
+fn extract_kicker(hands: Array<Hand>, hand_rank: u16) -> (Array<Hand>, Array<Card>) {
+    if hands.is_empty() {
+        return (array![], array![]);
+    }
+
+    match hand_rank {
+        HandRank::HIGH_CARD => compare_high_card_hands(hands),
+        HandRank::ONE_PAIR => compare_one_pair_hands(hands),
+        HandRank::TWO_PAIR => compare_two_pair_hands(hands),
+        HandRank::THREE_OF_A_KIND => compare_three_of_a_kind_hands(hands),
+        HandRank::STRAIGHT => compare_straight_hands(hands),
+        HandRank::FLUSH => compare_flush_hands(hands),
+        HandRank::FULL_HOUSE => compare_full_house_hands(hands),
+        HandRank::FOUR_OF_A_KIND => compare_four_of_a_kind_hands(hands),
+        HandRank::STRAIGHT_FLUSH => compare_straight_flush_hands(hands),
+        HandRank::ROYAL_FLUSH => (hands, array![]), // All royal flushes are equal
+        _ => (array![], array![]),
+    }
+}
+
+/// @gelluisaac
+/// Helper function to compare high card hands
+fn compare_high_card_hands(hands: Array<Hand>) -> (Array<Hand>, Array<Card>) {
+    let mut winning_hands = array![];
+    let mut highest_cards = array![];
+    let mut current_highest = 0;
+
+    for hand in hands {
+        let sorted = sort_cards_by_value_desc(hand.cards);
+        let high_card = *sorted.at(0);
+        
+        if high_card.value > current_highest {
+            current_highest = high_card.value;
+            winning_hands = array![hand];
+            highest_cards = array![high_card];
+        } else if high_card.value == current_highest {
+            match compare_kickers(sorted, highest_cards) {
+                Ordering::Greater => {
+                    winning_hands = array![hand];
+                    highest_cards = array![high_card];
+                },
+                Ordering::Equal => {
+                    winning_hands.append(hand);
+                    highest_cards.append(high_card);
+                },
+                _ => (),
+            };
+        }
+    }
+
+    (winning_hands, highest_cards)
+}
+
+/// @gelluisaac
+/// Helper function to compare one pair hands
+fn compare_one_pair_hands(hands: Array<Hand>) -> (Array<Hand>, Array<Card>) {
+    let mut winning_hands = array![];
+    let mut highest_pair_value = 0;
+    let mut best_kickers = array![];
+
+    for hand in hands {
+        let (pair_value, kickers) = get_pair_and_kickers(hand.cards);
+        
+        if pair_value > highest_pair_value {
+            highest_pair_value = pair_value;
+            winning_hands = array![hand];
+            best_kickers = kickers;
+        } else if pair_value == highest_pair_value {
+            match compare_kickers(kickers, best_kickers) {
+                Ordering::Greater => {
+                    winning_hands = array![hand];
+                    best_kickers = kickers;
+                },
+                Ordering::Equal => {
+                    winning_hands.append(hand);
+                },
+                _ => (),
+            };
+        }
+    }
+
+    (winning_hands, best_kickers)
+}
+
+/// @gelluisaac
+/// Enum to represent comparison results
+enum Ordering {
+    Greater,
+    Equal,
+    Less,
+}
+
+/// @gelluisaac
+/// Helper function to compare kicker cards between hands
+fn compare_kickers(kickers1: Array<Card>, kickers2: Array<Card>) -> Ordering {
+    let mut i = 0;
+    while i < kickers1.len() && i < kickers2.len() {
+        let card1 = *kickers1.at(i);
+        let card2 = *kickers2.at(i);
+        
+        if card1.value > card2.value {
+            return Ordering::Greater;
+        } else if card1.value < card2.value {
+            return Ordering::Less;
+        }
+        i += 1;
+    }
+    
+    Ordering::Equal
+}
+
+/// @gelluisaac
+/// Helper function to get pair value and kickers from a one-pair hand
+fn get_pair_and_kickers(cards: Array<Card>) -> (u16, Array<Card>) {
+    let sorted = sort_cards_by_value_desc(cards);
+    let mut value_counts = Default::default();
+    
+    // Count card frequencies
+    for card in sorted {
+        value_counts.insert(card.value.into(), value_counts.get(card.value.into()) + 1);
+    }
+
+    // Find the pair and kickers
+    let mut pair_value = 0;
+    let mut kickers = array![];
+    
+    for card in sorted {
+        if value_counts.get(card.value.into()) == 2 {
+            pair_value = card.value;
+        } else {
+            kickers.append(card);
+        }
+    }
+
+    (pair_value, kickers)
+}
+
+/// @gelluisaac
+/// Helper function to sort cards by value in descending order
+fn sort_cards_by_value_desc(mut cards: Array<Card>) -> Array<Card> {
+    let mut sorted = false;
+    while !sorted {
+        sorted = true;
+        let mut i = 0;
+        while i < cards.len() - 1 {
+            if *cards.at(i).value < *cards.at(i + 1).value {
+                let temp = *cards.at(i);
+                cards = set_array_element(cards, i, *cards.at(i + 1));
+                cards = set_array_element(cards, i + 1, temp);
+                sorted = false;
+            }
+            i += 1;
+        }
+    }
+    cards
+}
+
+// Additional comparison functions for other hand ranks would follow here...
+
+/// @pope-h
+/// Generates all k-card combinations from a given array of cards
 fn generate_combinations(cards: Array<Card>, k: usize) -> Array<Array<Card>> {
     let n = cards.len();
     let mut result: Array<Array<Card>> = array![];
-    let total: u32 = pow(2, n.try_into().unwrap()); // 2^n subsets
+    let total: u32 = pow(2, n.try_into().unwrap());
     let mut i: u32 = 0;
 
     while i < total {
@@ -257,20 +360,8 @@ fn generate_combinations(cards: Array<Card>, k: usize) -> Array<Array<Card>> {
     result
 }
 
+/// @pope-h
 /// Performs bitwise AND operation simulation
-///
-/// This function simulates a bitwise AND operation for 32-bit unsigned integers
-/// by manually checking and combining bits.
-///
-/// # Arguments
-/// * `a` - First 32-bit unsigned integer
-/// * `b` - Second 32-bit unsigned integer
-///
-/// # Returns
-/// Result of the bitwise AND operation
-///
-/// # Author
-/// [@pope-h]
 fn bit_and(a: u32, b: u32) -> u32 {
     let mut result = 0_u32;
     let mut position = 0_u32;
@@ -290,19 +381,8 @@ fn bit_and(a: u32, b: u32) -> u32 {
     result
 }
 
+/// @pope-h
 /// Calculates the power of a number
-///
-/// Computes `base` raised to the power of `exp` using iterative multiplication.
-///
-/// # Arguments
-/// * `base` - Base number
-/// * `exp` - Exponent
-///
-/// # Returns
-/// Result of base raised to the power of exp
-///
-/// # Author
-/// [@pope-h]
 fn pow(base: u32, exp: u32) -> u32 {
     let mut result = 1_u32;
     let mut i = 0_u32;
@@ -313,24 +393,8 @@ fn pow(base: u32, exp: u32) -> u32 {
     result
 }
 
+/// @pope-h
 /// Evaluates a 5-card hand and determines its poker rank
-///
-/// Analyzes a 5-card hand to determine its poker rank, checking for various
-/// hand combinations like flush, straight, pairs, etc.
-///
-/// # Arguments
-/// * `cards` - An array of 5 cards to evaluate
-///
-/// # Returns
-/// A tuple containing:
-/// 1. The original cards
-/// 2. The hand's rank as a u16 (using HandRank constants)
-///
-/// # Panics
-/// Panics if the number of cards is not exactly 5
-///
-/// # Author
-/// [@pope-h]
 fn evaluate_five_cards(cards: Array<Card>) -> (Array<Card>, u16) {
     assert(cards.len() == 5, 'Must have 5 cards');
 
@@ -358,7 +422,7 @@ fn evaluate_five_cards(cards: Array<Card>) -> (Array<Card>, u16) {
     let (orig_val3, poker_val3, suit3) = *sorted.at(3);
     let (orig_val4, poker_val4, suit4) = *sorted.at(4);
 
-    // Check for flush using suits (already fixed)
+    // Check for flush using suits
     let is_flush = suit0 == suit1 && suit1 == suit2 && suit2 == suit3 && suit3 == suit4;
 
     // Check for high straight using poker_values
@@ -428,31 +492,18 @@ fn evaluate_five_cards(cards: Array<Card>) -> (Array<Card>, u16) {
     (cards.clone(), HandRank::HIGH_CARD)
 }
 
+/// @pope-h
 /// Performs bubble sort on an array of card tuples
-///
-/// Sorts card tuples in descending order based on their poker value.
-///
-/// # Arguments
-/// * `arr` - An array of card tuples (original value, poker value, suit)
-///
-/// # Returns
-/// A sorted array of card tuples
-///
-/// # Author
-/// [@pope-h]
 fn bubble_sort(mut arr: Array<(u16, u16, u8)>) -> Array<(u16, u16, u8)> {
     let mut swapped = true;
     while swapped {
         swapped = false;
         let mut i: usize = 0;
         while i < arr.len() - 1 {
-            // Destructure the tuples to access poker_value
             let (orig_val_curr, poker_val_curr, suit_curr) = *arr.at(i);
             let (orig_val_next, poker_val_next, suit_next) = *arr.at(i + 1);
 
-            // Compare poker_values for descending order
             if poker_val_curr < poker_val_next {
-                // Swap elements if current poker_value is less than next
                 arr = set_array_element(arr.clone(), i, (orig_val_next, poker_val_next, suit_next));
                 arr = set_array_element(arr, i + 1, (orig_val_curr, poker_val_curr, suit_curr));
                 swapped = true;
@@ -463,18 +514,8 @@ fn bubble_sort(mut arr: Array<(u16, u16, u8)>) -> Array<(u16, u16, u8)> {
     arr
 }
 
+/// @pope-h
 /// Performs bubble sort on an array of u8 values
-///
-/// Sorts u8 values in descending order.
-///
-/// # Arguments
-/// * `arr` - An array of u8 values
-///
-/// # Returns
-/// A sorted array of u8 values
-///
-/// # Author
-/// [@pope-h]
 fn bubble_sort_u8(mut arr: Array<u8>) -> Array<u8> {
     let mut swapped = true;
     while swapped {
@@ -494,20 +535,8 @@ fn bubble_sort_u8(mut arr: Array<u8>) -> Array<u8> {
     arr
 }
 
+/// @pope-h
 /// Immutably sets an element in an array
-///
-/// Creates a new array with a specific element replaced at the given index.
-///
-/// # Arguments
-/// * `arr` - The original array
-/// * `index` - The index of the element to replace
-/// * `value` - The new value to set at the specified index
-///
-/// # Returns
-/// A new array with the specified element replaced
-///
-/// # Author
-/// [@pope-h]
 fn set_array_element<T, +Copy<T>, +Drop<T>>(mut arr: Array<T>, index: usize, value: T) -> Array<T> {
     let mut new_arr: Array<T> = array![];
     let mut i: usize = 0;

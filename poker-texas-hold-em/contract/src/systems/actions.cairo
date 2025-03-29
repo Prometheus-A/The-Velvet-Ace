@@ -260,17 +260,61 @@ pub mod actions {
 
         fn after_play(
             self: @ContractState, caller: ContractAddress,
-        ) { // check if player has more chips, prompt 'OUT OF CHIPS'
-        // resolve players -- set the next player in game
-        // but before setting the next player, check the player you wish to set, if the player is
-        // still in round.
-        // This after play has more to do -- it keeps close track of each round, and when it should
-        // call the `resolve_round()` function
-        // Keep track of Gmae's current bet, and pot
-        // This function deals the community cards.
-        // match each player's current bet with the game's current bet, and act accordingly.
-        // only works for the "next player". When matched, check the number of community cards.
-        // deal card if len() < 5, else call resolve_round().
+        ) { 
+            //@Reentrancy
+            let mut world = self.world_default();
+            let mut player: Player = world.read_model(caller);
+            let (is_locked, game_id) = player.locked;
+            
+            // Verify player state
+            assert(is_locked, GameErrors::PLAYER_NOT_IN_GAME);
+            assert(player.chips > 0, GameErrors::PLAYER_OUT_OF_CHIPS);
+            
+            let mut game: Game = world.read_model(game_id);
+            let players: Array<ContractAddress> = game.players;
+            
+            // Find current player index and calculate next player index
+            let mut current_index: usize = players.find_index(caller).expect('Caller not in game');
+            let next_index: usize = (current_index + 1) % players.len();
+            let next_player_address: ContractAddress = *players.at(next_index);
+            let mut next_player: Player = world.read_model(next_player_address);
+    
+            // Verify next player is still in round before proceeding
+            if !next_player.in_round {
+                // Skip to next active player
+                let mut attempts: usize = 0;
+                loop {
+                    if attempts >= players.len() {
+                        break;
+                    }
+                    let candidate_index: usize = (next_index + attempts) % players.len();
+                    let candidate: Player = world.read_model(*players.at(candidate_index));
+                    if candidate.in_round {
+                        next_player = candidate;
+                        break;
+                    }
+                    attempts += 1;
+                }
+            }
+    
+            // Update game state with current betting information
+            game.pot += player.current_bet;
+            if player.current_bet > game.current_bet {
+                game.current_bet = player.current_bet;
+            }
+    
+            // Handle community card dealing based on betting status
+            let community_cards_count: usize = game.community_cards.len();
+            if next_player.current_bet == game.current_bet && community_cards_count < 5 {
+                self._deal_community_card(game_id);
+            } else if community_cards_count == 5 {
+                self._resolve_round(game_id);
+            }
+    
+            // Persist updated state
+            world.write_model(@player);
+            world.write_model(@game);
+            world.write_model(@next_player);
         }
 
 

@@ -144,7 +144,7 @@ pub impl HandImpl of HandTrait {
                 // append details into `winning_hands` -- extracted using a bool variables
                 // `hands_changed`
                 // the hands have been changed
-                winning_hands = array![]
+                winning_hands = array![];
                 // update the necessary arrays here.
 
             } else if current_rank == highest_rank {
@@ -168,7 +168,7 @@ pub impl HandImpl of HandTrait {
                 // is true, if not, add only the kicker hand to the Array. For more than two
                 // kickers, arrange the array accordingly. might be implemented by someone else.
                 // here, hands have been changed, right?
-                winning_hands = array![]
+                winning_hands = array![];
                 // do the necessary updates.
             }
         };
@@ -244,9 +244,12 @@ fn generate_combinations(cards: Array<Card>, k: usize) -> Array<Array<Card>> {
         let mut subset: Array<Card> = array![];
         let mut j: usize = 0;
         while j < n {
-            if bit_and(i, pow(2, j.try_into().unwrap())) != 0 {
+            if i & pow(2, j.try_into().unwrap()) != 0 {
                 subset.append(*cards.at(j));
-            };
+            }
+            // if bit_and(i, pow(2, j.try_into().unwrap())) != 0 {
+
+            // };
             j += 1;
         };
         if subset.len() == k {

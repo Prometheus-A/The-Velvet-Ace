@@ -574,8 +574,8 @@ pub mod actions {
 
             // Write the modified players back to the world storage first
             for player in players.span() {
-                world.write_model(@player);
-            }
+                world.write_model(player);
+            };
 
             // Update game state for the next round
             game.current_round += 1;

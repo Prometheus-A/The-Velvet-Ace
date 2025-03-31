@@ -25,14 +25,13 @@ pub impl GameImpl of GameTrait {
 
         // Prepare decks for the game
         let mut decks: Array<Deck> = array![];
-        for deck_id in deck_ids
-            .clone() {
-                let mut deck: Deck = Default::default();
-                deck.id = deck_id;
-                deck.new_deck();
-                deck.shuffle();
-                decks.append(deck);
-            };
+        for deck_id in deck_ids.clone() {
+            let mut deck: Deck = Default::default();
+            deck.id = deck_id;
+            deck.new_deck();
+            deck.shuffle();
+            decks.append(deck);
+        };
 
         // Create game instance
         self.deck = deck_ids;

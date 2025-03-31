@@ -18,14 +18,12 @@ fn generate_random(span: u32) -> u32 {
 pub impl DeckImpl of DeckTrait {
     fn new_deck(ref self: Deck) {
         let mut cards: Array<Card> = array![];
-        for suit in 0_u8
-            ..4_u8 {
-                for value in 1_u16
-                    ..14_u16 {
-                        let card: Card = Card { suit, value };
-                        cards.append(card);
-                    };
+        for suit in 0_u8..4_u8 {
+            for value in 1_u16..14_u16 {
+                let card: Card = Card { suit, value };
+                cards.append(card);
             };
+        };
 
         self.cards = cards;
     }
@@ -82,5 +80,4 @@ pub impl DeckImpl of DeckTrait {
 }
 // assert after shuffling, that all cards remain distinct, and the deck is still 52 cards
 // #[derive(Serde, Copy, Drop, Introspect, PartialEq, Debug)]
-
 

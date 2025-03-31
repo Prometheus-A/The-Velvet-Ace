@@ -121,10 +121,22 @@ pub impl HandImpl of HandTrait {
         (best_hand, best_rank)
     }
 
+
+    /// Compares multiple hands and determines the winner(s)
+    ///
+    /// This function compares all player hands against the community cards
+    /// to determine the winner or winners (in case of a split pot).
+    ///
+    /// # Arguments
+    /// * `hands` - Array of player hands to compare
+    /// * `community_cards` - The community cards on the table
+    /// * `game_params` - Game parameters including split pot rules
+    ///
+    /// # Returns
+    /// Span of winning hands (multiple hands if there's a split pot)
+    ///
+    /// # Author
     /// @Akshola00
-    /// This function will compare the hands of all the players and return an array of Player
-    /// contains the player with the winning hand
-    /// this is only possible if the `kick_split` in game_params is true
     fn compare_hands(
         hands: Array<Hand>, community_cards: Array<Card>, game_params: GameParams,
     ) -> Span<Hand> {
@@ -134,21 +146,25 @@ pub impl HandImpl of HandTrait {
 
         // TODO: Ace might be ccurrent_winning_handhanged to a higher value.
         let mut highest_rank: u16 = 0;
-        let mut current_winning_hand: Hand = Self::default();
-        // let mut winning_players: Array<Option<Player>> = array![];
         let mut winning_hands: Array<Hand> = array![];
-        for hand in hands {
-            let (new_hand, current_rank) = hand.rank(community_cards.clone());
+
+        // Evaluate each hand
+        let mut i: usize = 0;
+        while i < hands.len() {
+            let current_hand = *hands.at(i);
+            let (evaluated_hand, current_rank) = current_hand.rank(community_cards.clone());
+
+            // Case 1: Found a higher-ranking hand
             if current_rank > highest_rank {
-                highest_rank = current_rank;
-                current_winning_hand = hand;
+                // Clear previous winning hands and start a new winner list
                 // append details into `winning_hands` -- extracted using a bool variables
                 // `hands_changed`
                 // the hands have been changed
                 winning_hands = array![];
-                // update the necessary arrays here.
-                winning_hands.append(new_hand);
-            } else if current_rank == highest_rank {
+                winning_hands.append(evaluated_hand);
+                highest_rank = current_rank;
+            } // Case 2: Found a hand with the same rank
+            else if current_rank == highest_rank && winning_hands.len() > 0 {
                 // implement kicker. Only works for the current_winner variable
                 // retrieve the former current_winner already stored and the current player,
                 // and compare both hands. This should be done in another internal function and be
@@ -169,21 +185,38 @@ pub impl HandImpl of HandTrait {
                 // is true, if not, add only the kicker hand to the Array. For more than two
                 // kickers, arrange the array accordingly. might be implemented by someone else.
                 // here, hands have been changed, right?
-                winning_hands = array![];
+                // Handle kicker comparison for equal ranks
+                if highest_rank == HandRank::STRAIGHT || highest_rank == HandRank::STRAIGHT_FLUSH {
+                    // For straights, compare the highest card
+                    let current_high_card = get_high_card(evaluated_hand.cards);
+                    let existing_high_card = get_high_card((*winning_hands.at(0)).cards);
 
-                if game_params.kicker_split {
-                    // In case of ties and kicker_split is enabled, add both hands
-                    winning_hands.append(new_hand);
-                    winning_hands.append(current_winning_hand);
+                    if current_high_card > existing_high_card {
+                        winning_hands = array![];
+                        winning_hands.append(evaluated_hand);
+                    } else if current_high_card == existing_high_card && game_params.kicker_split {
+                        winning_hands.append(evaluated_hand);
+                    }
                 } else {
-                    // When kicker_split is disabled, keep existing winning hand
-                    // TODO: Replace this with proper kicker comparison
-                    winning_hands.append(new_hand);
+                    // For other hand types, compare the kickers
+                    let kicker_result = compare_kickers(
+                        evaluated_hand.cards.clone(),
+                        (*winning_hands.at(0)).cards.clone(),
+                        highest_rank,
+                    );
+
+                    if kicker_result > 0 {
+                        // Current hand is better
+                        winning_hands = array![];
+                        winning_hands.append(evaluated_hand);
+                    } else if kicker_result == 0 && game_params.kicker_split {
+                        // Exact tie and kicker split is enabled
+                        winning_hands.append(evaluated_hand);
+                    }
                 }
-
-
-                // do the necessary updates.
             }
+
+            i += 1;
         };
 
         winning_hands.span()

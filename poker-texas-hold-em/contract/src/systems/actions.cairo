@@ -451,18 +451,18 @@ pub mod actions {
                             let mut deck: Deck = world.read_model(deck_id);
                             hand.add_card(deck.deal_card());
 
-                    world
-                        .emit_event(
-                            @CardDealt {
-                                game_id: *game_id,
-                                player_id: *player.id,
-                                deck_id: deck.id,
-                                time_stamp: starknet::get_block_timestamp(),
-                            },
-                        );
-
                             world.write_model(@deck); // should work, ;)
                             current_index += 1;
+
+                            world
+                                .emit_event(
+                                    @CardDealt {
+                                        game_id: *game_id,
+                                        player_id: *player.id,
+                                        deck_id: deck.id,
+                                        time_stamp: starknet::get_block_timestamp(),
+                                    },
+                                );
                         };
 
                     world.write_model(@hand);
@@ -545,7 +545,7 @@ pub mod actions {
         }
 
         /// dev: @psychemist
-        /// 
+        ///
         /// Resolves the current round and prepares the game for the next round
         ///
         /// This function:
@@ -609,7 +609,7 @@ pub mod actions {
         }
 
         /// dev: @psychemist
-        /// 
+        ///
         /// Deals a community card to the game board
         ///
         /// This function:

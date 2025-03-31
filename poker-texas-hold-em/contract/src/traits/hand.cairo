@@ -154,7 +154,6 @@ pub impl HandImpl of HandTrait {
             let current_hand = *hands.at(i);
             let (evaluated_hand, current_rank) = current_hand.rank(community_cards.clone());
 
-            // Case 1: Found a higher-ranking hand
             if current_rank > highest_rank {
                 // Clear previous winning hands and start a new winner list
                 // append details into `winning_hands` -- extracted using a bool variables
@@ -163,7 +162,7 @@ pub impl HandImpl of HandTrait {
                 winning_hands = array![];
                 winning_hands.append(evaluated_hand);
                 highest_rank = current_rank;
-            } // Case 2: Found a hand with the same rank
+            }
             else if current_rank == highest_rank && winning_hands.len() > 0 {
                 // implement kicker. Only works for the current_winner variable
                 // retrieve the former current_winner already stored and the current player,

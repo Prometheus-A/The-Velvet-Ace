@@ -231,52 +231,38 @@ pub mod actions {
         fn before_play(
             self: @ContractState, caller: ContractAddress,
         ) { // Check the chips available in the player model
-        // check if player is locked to a session
-        // check if the player is even in the game (might have left along the way)...call the below
-        // function
-        // check if it's player's turn
+            // check if player is locked to a session
+            // check if the player is even in the game (might have left along the way)...call the
+            // below function
+            // check if it's player's turn
 
-         // Initialize the world state
+            // Initialize the world state
             let mut world = self.world_default();
-            
+
             // Retrieve the player model based on the caller (ContractAddress)
             let player: Player = world.read_model(caller);
             let (is_locked, game_id) = player.locked;
 
             // Check if the player is locked into a session; if not locked, they can't play
             assert(is_locked, GameErrors::PLAYER_NOT_IN_GAME);
-            
+
             // Retrieve the game model associated with the player's game_id
             let game: Game = world.read_model(game_id);
-            
+
             // Ensure the player has chips to play
             assert(player.chips > 0, GameErrors::PLAYER_OUT_OF_CHIPS);
-            
+
             // Ensure the player is actively in the current round
             assert(player.in_round, 'Player not active in round');
-            
-            // Ensure the player is part of the current game
-            let mut found = false;
-            let mut i = 0;
-            while i < game.players.len() {
-                if *game.players.at(i) == caller {
-                    found = true;
-                    break;
-                }
-                i += 1;
-            };
-            assert(found, 'Player not in game');
-            
+
             // Check if it is the player's turn
             match game.next_player {
                 Option::Some(next_player) => {
                     // Assert that the next player to play is the caller
                     assert(next_player == caller, 'Not player turn');
                 },
-                Option::None => {
-                    // If no active player, assert with a custom error message
-                    assert(false, 'No active player turn');
-                }
+                Option::None => { // TODO: END GAME
+                },
             }
         }
 

@@ -304,12 +304,19 @@ fn find_player_index(
             id
         }
 
+
+        /// This function makes all assertions on if player is meant to call this function.
         // @LaGodxy
         /// This function performs all necessary assertions to check if a player is eligible to call the 'play' function.
         /// It checks the player's status, chips, turn, and whether they are part of the game.
         fn before_play(
             self: @ContractState, caller: ContractAddress,
         ) {
+            // Check the chips available in the player model
+            // check if player is locked to a session
+            // check if the player is even in the game (might have left along the way)...call the below
+            // function
+            // check if it's player's turn
             // Initialize the world state
             let mut world = self.world_default();
             

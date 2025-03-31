@@ -49,7 +49,7 @@ pub impl GameImpl of GameTrait {
             // check for cash game, only if round is not in progress
             && !*self.round_in_progress
             && *self.params.game_mode == GameMode::CashGame
-            // Then check if game has a free spot
+            // Then check if game has a free spot. Crosscheck this len
             && *self.current_player_count < self.players.len()
     }
 

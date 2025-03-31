@@ -195,19 +195,97 @@ pub mod actions {
             world.read_model(game_id)
         }
 
-        fn set_alias(self: @ContractState, alias: felt252) {
-            let caller: ContractAddress = get_caller_address();
-            assert(caller.is_non_zero(), 'ZERO CALLER');
-            let mut world = self.world_default();
-            let mut player: Player = world.read_model(caller);
-            let check: Player = world.read_model(alias.clone());
-            assert(check.id.is_zero(), 'ALIAS UPDATE FAILED');
-            player.alias = alias;
+    fn set_alias(self: @ContractState, alias: felt252) {
+        let caller: ContractAddress = get_caller_address();
+        assert(caller.is_non_zero(), 'ZERO CALLER');
+        let mut world = self.world_default();
+        let mut player: Player = world.read_model(caller);
+        let check: Player = world.read_model(alias.clone());
+        assert(check.id.is_zero(), 'ALIAS UPDATE FAILED');
+        player.alias = alias;
+fn after_play(ref self: ContractState, caller: ContractAddress) {
+    //@Reentrancy
+    let mut world = self.world_default();
+    let mut player: Player = world.read_model(caller);
+    let (is_locked, game_id) = player.locked;
 
-            world.write_model(@player);
-        }
+    // Ensure the player is in a game
+    assert(is_locked, 'Player not in game');
+
+    let mut game: Game = world.read_model(game_id);
+
+    // Check if all community cards are dealt (5 cards in Texas Hold'em)
+    if game.community_cards.len() == 5 {
+        return self._resolve_round(game_id);
     }
 
+    // Find the caller's index in the players array
+    let current_index_option: Option<usize> = self.find_player_index(@game.players, caller);
+    assert(current_index_option.is_some(), 'Caller not in game');
+    let current_index: usize = OptionTrait::unwrap(current_index_option);
+
+    // Update game state with the player's action
+    if player.current_bet > game.current_bet {
+        game.current_bet = player.current_bet; // Raise updates the current bet
+    }
+
+    world.write_model(@player); // Ensure player state is written
+
+    // Determine the next active player or resolve the round
+    let next_player_option: Option<ContractAddress> = self
+        .find_next_active_player(@game.players, current_index, @world);
+
+    if next_player_option.is_none() {
+        // No active players remain, resolve the round
+        self._resolve_round(game_id);
+    } else {
+        game.next_player = next_player_option;
+    }
+
+    world.write_model(@game);
+}
+
+fn find_player_index(
+    self: @ContractState, players: @Array<ContractAddress>, player_address: ContractAddress,
+) -> Option<usize> {
+    let mut i = 0;
+    let mut result: Option<usize> = Option::None;
+    while i < players.len() {
+        if *players.at(i) == player_address {
+            result = Option::Some(i);
+            break;
+        }
+        i += 1;
+    };
+    result
+}
+
+
+        fn find_next_active_player(
+            self: @ContractState,
+            players: @Array<ContractAddress>,
+            current_index: usize,
+            world: @dojo::world::WorldStorage,
+        ) -> Option<ContractAddress> {
+            let num_players = players.len();
+            let mut next_index = (current_index + 1) % num_players;
+            let mut attempts = 0;
+            let mut result: Option<ContractAddress> = Option::None;
+
+            while attempts < num_players {
+                let player_address = *players.at(next_index);
+                let p: Player = world.read_model(player_address);
+                let (is_locked, _) = p
+                    .locked; // Adjusted to check locked status instead of is_in_game
+                if is_locked && p.in_round {
+                    result = Option::Some(player_address);
+                    break;
+                }
+                next_index = (next_index + 1) % num_players;
+                attempts += 1;
+            };
+            result
+        }
 
     #[generate_trait]
     impl InternalImpl of InternalTrait {
@@ -531,19 +609,22 @@ pub mod actions {
 
             game_id = *player_game_id;
 
-            // Verify all players are in the same game
-            let mut i: u32 = 1;
-            while i < players_len {
-                let player = players.at(i);
-                let (player_is_locked, player_game_id) = player.locked;
+        // Verify all players are in the same game
+        let mut i: u32 = 1;
+        while i < players_len {
+            let player = players.at(i);
+            let (player_is_locked, player_game_id) = player.locked;
+        // Assert the player is in a game
+        assert(*player_is_locked, GameErrors::PLAYER_NOT_IN_GAME);
+        // Assert all players are in the same game
+        assert(*player_game_id == game_id, "Players in different games");
 
-                // Assert the player is in a game
-                assert(*player_is_locked, GameErrors::PLAYER_NOT_IN_GAME);
-                // Assert all players are in the same game
-                assert(*player_game_id == game_id, 'Players in different games');
+        i += 1;
 
-                i += 1;
-            };
+        // Read game state
+        let mut world = self.world_default();
+        let mut game: Game = world.read_model(game_id);
+
 
             let mut world = self.world_default();
             let mut game: Game = world.read_model(game_id);
@@ -578,28 +659,292 @@ pub mod actions {
 
                 hand.new_hand();
 
-                world.write_model(@hand);
-                j += 1;
-            };
-
-            world.emit_event(@HandResolved { game_id: game_id, players: resolved_players });
+fn _resolve_round(ref self: ContractState, game_id: u64) {
+    let mut world = self.world_default();
+    let mut game: Game = world.read_model(game_id);
+    
+    // Get all players in the round
+    let mut active_players = ArrayTrait::new();
+    
+    for player_addr in game.players.span() {
+        let mut player: Player = world.read_model(*player_addr);
+        
+        // Reset player state for next round
+        if player.in_round {
+            active_players.append(player);
         }
-
-        fn _resolve_round(ref self: ContractState, game_id: u64) { // should call resolve_hands()
-        // remember to call resolve_hands and pass an array of players that are in_round
-        // should write back the player and the game to the world
-        // all players should be set back in the next round
-        // increment number of rounds,
-        // resolve the game variables
-        // emit an event that a game_id round is open for others to join, only if necessary game
-        // world.emit_event(@RoundResolved{game_id, is_open: true})
-        // param checks have been cleared.
-        // set next player too here?
+        
+        player.has_acted = false;
+        player.current_bet = 0;
+        player.has_folded = false;
+        player.in_round = true;
+        
+        world.write_model(@player);
+    }
+    
+    // Resolve hands for active players
+    self._resolve_hands(ref active_players);
+    
+    // Reset game state for next round
+    game.current_bet = 0;
+    game.pot = 0;
+    game.community_cards = ArrayTrait::new();
+    game.side_pots = ArrayTrait::new();
+    game.round_number += 1;
+    
+    // Set the dealer for the next round
+    if !game.players.is_empty() {
+        let first_player: Player = world.read_model(*game.players.at(0));
+        let _ = self._get_dealer(@first_player);
+        
+        // Set the first player after the dealer as the current player
+        let mut dealer_found = false;
+        for player_addr in game.players.span() {
+            let player: Player = world.read_model(*player_addr);
+            
+            if dealer_found {
+                game.current_player = *player_addr;
+                break;
+            }
+            
+            if player.is_dealer {
+                dealer_found = true;
+            }
         }
-
-        fn _deal_community_card(
-            ref self: ContractState, game_id: u64,
-        ) { // Should return the array of cards?
+        
+        // If dealer was last, start with the first player
+        if dealer_found && game.current_player.is_zero() {
+            game.current_player = *game.players.at(0);
         }
     }
+    
+    // Emit event signaling that a new round has started
+    world.emit_event(@RoundResolved { game_id: game_id, is_open: true });
+
+    // Write updated game state back to the world
+    world.write_model(@game);
 }
+
+        
+        // Update game state
+        world.write_model(@game);
+        
+        // Emit round resolved event
+        self._emit_event(
+            @RoundResolved {
+                game_id,
+                is_open: game.players.len() < game.params.max_no_of_players,
+                time_stamp: starknet::get_block_timestamp(),
+            },
+            ref world
+        );
+    }
+
+    // @LaGodxy
+    fn _deal_community_card(
+        ref self: ContractState, ref game: Game,
+    ) {
+        let mut world = self.world_default();
+        let deck_ids: Array<u64> = game.deck;
+        
+        // Determine how many cards to deal based on current community cards
+        let current_cards = game.community_cards.len();
+        let cards_to_deal = match current_cards {
+            0 => 3, // Flop: deal 3 cards
+            3 | 4 => 1, // Turn or River: deal 1 card
+            _ => 0, // Invalid state or all cards dealt
+        };
+        
+        if cards_to_deal == 0 {
+            return;
+        }
+        
+        // Deal the required number of cards
+        let mut deck_index = 0;
+        for _ in 0..cards_to_deal {
+            // Get a deck in round-robin fashion
+            let deck_id = *deck_ids.at(deck_index % deck_ids.len());
+            let mut deck: Deck = world.read_model(deck_id);
+            
+            // Deal a card and add to community cards
+            let card = deck.deal_card();
+            game.community_cards.append(card);
+            
+            // Update deck
+            world.write_model(@deck);
+            deck_index += 1;
+        }
+        
+        // Reset current bets for all players
+        for player_addr in game.players.span() {
+            let mut player: Player = world.read_model(*player_addr);
+            player.current_bet = 0;
+            world.write_model(@player);
+        }
+        
+        // Reset game's current bet
+        game.current_bet = 0;
+        
+        // Update game state
+        world.write_model(@game);
+    }
+    
+    // @LaGodxy
+    /// Helper function to get player and game data
+    fn _get_player_and_game(
+        self: @ContractState, 
+        game_id: u64
+    ) -> (ContractAddress, dojo::world::WorldStorage, Player, Game) {
+        let caller: ContractAddress = get_caller_address();
+        let mut world = self.world_default();
+        let player: Player = world.read_model(caller);
+        let game: Game = world.read_model(game_id);
+        
+        (caller, world, player, game)
+    }
+    
+    // @LaGodxy
+    /// Helper function to get player and game state for a player
+    fn _get_player_game_state(
+        self: @ContractState, 
+        caller: ContractAddress
+    ) -> (dojo::world::WorldStorage, Player, Game) {
+        let mut world = self.world_default();
+        let player: Player = world.read_model(caller);
+        let (_, game_id) = player.locked;
+        let game: Game = world.read_model(game_id);
+        
+        (world, player, game)
+    }
+    
+    // @LaGodxy
+    /// Helper function to count active players and return the last active player
+    fn _count_active_players(
+        self: @ContractState, 
+        ref world: dojo::world::WorldStorage, 
+        ref game: Game
+    ) -> (u32, ContractAddress) {
+        let mut active_players = 0;
+        let mut last_active_player: ContractAddress = ContractAddress::zero();
+        
+        for player_addr in game.players.span() {
+            let current_player: Player = world.read_model(*player_addr);
+            if current_player.in_round {
+                active_players += 1;
+                last_active_player = *player_addr;
+            }
+        }
+        
+        (active_players, last_active_player)
+    }
+    
+    // @LaGodxy
+    /// Helper function to reset actions for all players except the specified one
+    fn _reset_player_actions(
+        self: @ContractState, 
+        ref world: dojo::world::WorldStorage, 
+        ref game: Game, 
+        except_player: ContractAddress
+    ) {
+        for player_addr in game.players.span() {
+            if *player_addr != except_player {
+                let mut other_player: Player = world.read_model(*player_addr);
+                if other_player.in_round && !other_player.has_folded && !other_player.is_all_in {
+                    other_player.has_acted = false;
+                    world.write_model(@other_player);
+                }
+            }
+        }
+    }
+    
+    // @LaGodxy
+    /// Helper function to reset actions for all players
+    fn _reset_all_player_actions(
+        self: @ContractState, 
+        ref world: dojo::world::WorldStorage, 
+        ref game: Game
+    ) {
+        for player_addr in game.players.span() {
+            let mut player: Player = world.read_model(*player_addr);
+            if player.in_round && !player.has_folded && !player.is_all_in {
+                player.has_acted = false;
+                world.write_model(@player);
+            }
+        }
+    }
+    
+    // @LaGodxy
+    /// Helper function to check if all players have acted and find the next player
+    fn _check_player_actions(
+        self: @ContractState, 
+        ref world: dojo::world::WorldStorage, 
+        ref game: Game
+    ) -> (bool, ContractAddress) {
+        let mut all_acted = true;
+        let mut next_player = ContractAddress::zero();
+        
+        for player_addr in game.players.span() {
+            let current_player: Player = world.read_model(*player_addr);
+            if current_player.in_round && !current_player.has_folded && !current_player.is_all_in {
+                if !current_player.has_acted {
+                    all_acted = false;
+                    next_player = *player_addr;
+                    break;
+                }
+            }
+        }
+        
+        (all_acted, next_player)
+    }
+    
+    // @LaGodxy
+    /// Helper function to get the first active player
+    fn _get_first_active_player(
+        self: @ContractState, 
+        ref world: dojo::world::WorldStorage, 
+        ref game: Game
+    ) -> ContractAddress {
+        for player_addr in game.players.span() {
+            let player: Player = world.read_model(*player_addr);
+            if player.in_round && !player.has_folded && !player.is_all_in {
+                return *player_addr;
+            }
+        }
+        
+        // Fallback to first player if no active player found
+        if !game.players.is_empty() {
+            return *game.players.at(0);
+        }
+        
+        ContractAddress::zero()
+    }
+    
+    // @LaGodxy
+    /// Helper function to get all active players
+    fn _get_active_players(
+        self: @ContractState, 
+        ref world: dojo::world::WorldStorage, 
+        ref game: Game
+    ) -> Array<Player> {
+        let mut active_players = ArrayTrait::new();
+        
+        for player_addr in game.players.span() {
+            let player: Player = world.read_model(*player_addr);
+            active_players.append(player);
+        }
+        
+        active_players
+    }
+    
+    // @LaGodxy
+    /// Helper function to emit events
+    fn _emit_event<T>(
+        self: @ContractState, 
+        event: @T, 
+        ref world: dojo::world::WorldStorage
+    ) {
+        world.emit_event(event);
+    }
+}
+}
+

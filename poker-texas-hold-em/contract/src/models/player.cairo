@@ -44,13 +44,14 @@ pub fn get_default_player() -> Player {
 
 #[generate_trait]
 pub impl PlayerImpl of PlayerTrait {
-    fn exit(ref self: Player, game: @Game, out: bool) {
+    fn exit(ref self: Player, ref game: Game, out: bool) {
         let (is_locked, id) = self.locked;
         assert(is_locked, 'CANNOT EXIT, PLAYER NOT LOCKED');
+        assert(game.current_player_count != 0, 'GAME PLAYER COUNT SUB');
         if out {
             // check game id
-            assert(id == *game.id, 'BAD REQUEST');
-            self.out = (*game.id, *game.reshuffled);
+            assert(id == game.id, 'BAD REQUEST');
+            self.out = (game.id, game.reshuffled);
         }
 
         self.current_bet = 0;
@@ -58,6 +59,8 @@ pub impl PlayerImpl of PlayerTrait {
         self.in_round = false;
         self.locked = (false, 0);
         self.out = (0, 0);
+
+        game.current_player_count -= 1;
     }
 
     fn enter(ref self: Player, ref game: Game) {
@@ -67,7 +70,6 @@ pub impl PlayerImpl of PlayerTrait {
         assert(self.chips >= game.params.min_amount_of_chips, GameErrors::INSUFFICIENT_CHIP);
         assert(game.is_initialized(), GameErrors::GAME_NOT_INITIALIZED);
         assert(!game.has_ended, GameErrors::GAME_ALREADY_ENDED);
-        assert(!game.in_progress, GameErrors::GAME_ALREADY_STARTED);
         assert(game.is_allowable(), GameErrors::ENTRY_DISALLOWED);
 
         if (game.id, game.reshuffled) != self.out {
@@ -76,19 +78,14 @@ pub impl PlayerImpl of PlayerTrait {
         } // should work.
         self.locked = (true, game.id);
         self.in_round = true;
+        game.current_player_count += 1;
     }
 
     fn extract_current_game_id(self: @Player) -> @u64 {
-        // Extract current game id from the player
         let (is_locked, game_id) = self.locked;
-
-        // Assert player is actually locked in a game
         assert(*is_locked, GameErrors::PLAYER_NOT_IN_GAME);
-
-        // Make an assertion that the id isn't zero
         assert(*game_id != 0, GameErrors::PLAYER_NOT_IN_GAME);
 
-        // Return the id
         game_id
     }
 

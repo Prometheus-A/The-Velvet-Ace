@@ -123,7 +123,7 @@ mod tests {
     // 3. The order of cards has changed (deck is actually shuffled)
     // TODO: Fix the DeckTrait [`shuffle()`] function to make the test pass
     #[test]
-    #[ignore]
+    // #[ignore]
     fn test_shuffle() {
         let mut deck: Deck = Deck { id: 1, cards: array![] };
         deck.new_deck();
@@ -138,6 +138,7 @@ mod tests {
 
         // Test 2: Verify all cards are still unique
         let unique_count: u32 = count_unique_cards(@deck);
+        println!("unique count: {}", unique_count);
         assert(unique_count == 52, 'All cards should be unique');
 
         // Test 3: Verify the order has changed

@@ -5,7 +5,7 @@ use core::hash::{HashStateTrait, HashStateExTrait};
 use poker::models::deck::Deck;
 use poker::models::card::Card;
 
-pub const DEFAULT_DECK_LENGTH: u32 = 52; // move this up up
+// pub const DEFAULT_DECK_LENGTH: u32 = 52; // move this up up
 
 fn generate_random(span: u32) -> u32 {
     let seed = starknet::get_block_timestamp();
@@ -16,7 +16,7 @@ fn generate_random(span: u32) -> u32 {
 
 #[generate_trait]
 pub impl DeckImpl of DeckTrait {
-    fn new_deck(ref self: Deck) -> Deck {
+    fn new_deck(ref self: Deck) {
         let mut cards: Array<Card> = array![];
         for suit in 0_u8..4_u8 {
             for value in 1_u16..14_u16 {
@@ -25,34 +25,57 @@ pub impl DeckImpl of DeckTrait {
             };
         };
 
-        Deck { id: self.id, cards }
+        self.cards = cards;
     }
 
     fn shuffle(ref self: Deck) {
-        let mut cards: Array<Card> = self.cards;
-        let mut new_cards: Array<Card> = array![];
-        let mut verifier: Felt252Dict<bool> = Default::default();
-        for _ in cards.len()..0 {
-            let mut rand = generate_random(DEFAULT_DECK_LENGTH);
-            while verifier.get(rand.into()) {
-                rand = generate_random(DEFAULT_DECK_LENGTH);
-            };
-            let temp: Card = *cards.at(rand);
-            new_cards.append(temp);
-            verifier.insert(rand.into(), true);
+        // Clone the cards
+        let original_cards: Array<Card> = self.cards.clone();
+        let length = original_cards.len();
+
+        // Handle edge case
+        if length <= 1 {
+            return;
+        }
+
+        // Create a new array for shuffled cards
+        let mut shuffled_cards: Array<Card> = array![];
+
+        // Create an array of available indices
+        let mut remaining_indices: Array<u32> = array![];
+        let mut i: u32 = 0;
+        while i < length {
+            remaining_indices.append(i);
+            i += 1;
         };
 
-        self.cards = new_cards.clone();
-        // deck
+        // Select random cards until we've used all indices
+        while remaining_indices.len() > 0 {
+            // Get random position within remaining indices
+            let random_pos = generate_random(remaining_indices.len());
+            let card_index = *remaining_indices.at(random_pos);
+
+            // Add the selected card to our shuffled deck
+            shuffled_cards.append(*original_cards.at(card_index));
+
+            // Remove the used index by rebuilding the array without it
+            let mut new_remaining = array![];
+            let mut j: u32 = 0;
+            while j < remaining_indices.len() {
+                if j != random_pos {
+                    new_remaining.append(*remaining_indices.at(j));
+                }
+                j += 1;
+            };
+            remaining_indices = new_remaining;
+        };
+
+        // Update the deck
+        self.cards = shuffled_cards;
     }
 
     fn deal_card(ref self: Deck) -> Card {
-        let previous_size = self.cards.len();
-        // assert_ne(previous_size, 0);
-        let card: Card = self.cards.pop_front().unwrap();
-        // assert_gt!(previous_size, deck.cards.len());
-
-        card
+        self.cards.pop_front().unwrap()
     }
 }
 // assert after shuffling, that all cards remain distinct, and the deck is still 52 cards

@@ -19,17 +19,54 @@ pub mod Royals {
 #[generate_trait]
 pub impl CardImpl of CardTrait {
     fn get_suit(self: @Card) -> ByteArray {
-        ""
+        if *self.value == 0 {
+            return "JOKER";
+        }
+
+        match *self.suit {
+            0 => "SPADES",
+            1 => "CLUBS",
+            2 => "DIAMONDS",
+            3 => "HEARTS",
+            _ => "UNKNOWN",
+        }
     }
 
-    fn get_value_byte_array(self: @Card) -> ByteArray {
-        ""
+    fn to_byte_array(self: @Card) -> ByteArray {
+        let mut str: ByteArray = "";
+        let value = *self.value;
+        if value == 0 {
+            return "JOKER";
+        }
+
+        if value > 1 && value < 11 {
+            let val = @value;
+            str.append(@format!("{val}"))
+        } else if value == 1 {
+            str.append(@"ACE");
+        } else if (value >= 11 && value <= 13) {
+            if value == 11 {
+                str.append(@"JACK");
+            } else if value == 12 {
+                str.append(@"QUEEN");
+            } else if value == 13 {
+                str.append(@"KING");
+            }
+        } else {
+            return "UNKNOWN";
+        }
+
+        str.append(@format!(" of {}", self.get_suit()));
+        str
     }
 
-    fn resolve_card(ref self: Card) {}
+    fn resolve(ref self: Card) {
+        self.suit = 0;
+        self.value = 0;
+    }
 
-    fn is_valid_card(self: @Card) -> bool {
-        self.suit.is_non_zero() && self.value.is_non_zero()
+    fn is_valid(self: @Card) -> bool {
+        self.value.is_non_zero()
     }
 }
 // Should implement into?
@@ -43,3 +80,35 @@ pub mod Suits {
     pub const HEARTS: u8 = 3;
 }
 
+#[cfg(test)]
+mod tests {
+    use super::{Card, CardTrait, Suits, Royals};
+
+    #[test]
+    fn test_card_is_valid() {
+        let card: Card = Default::default();
+        assert(!card.is_valid(), 'CARD SHOULD NOT BE VALID');
+    }
+
+    #[test]
+    fn test_card_trait() {
+        let mut card = Card { suit: Suits::SPADES, value: Royals::ACE };
+
+        let card_desc: ByteArray = card.to_byte_array();
+        let desc_ref: ByteArray = "ACE of SPADES";
+        assert(card.is_valid(), 'INVALID CARD');
+        assert(card_desc == desc_ref, 'INVALID CARD CONVERSION');
+        card.resolve();
+        assert(!card.is_valid(), 'SHOULD NOT BE VALID');
+
+        card.value = 0;
+        let joker: ByteArray = card.to_byte_array();
+        assert(joker == "JOKER", 'CARD NOT JOKER');
+
+        card.suit = Suits::HEARTS;
+        card.value = 5;
+        let card_desc = card.to_byte_array();
+        let desc_ref: ByteArray = "5 of HEARTS";
+        assert(card_desc == desc_ref, 'NUMBER CONVERSION FAILED');
+    }
+}

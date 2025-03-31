@@ -1,6 +1,46 @@
 /// TODO: make sure you create events
 ///
 /// **********************************************************************************************
+/// Events
+use poker::models::game::GameParams;
+use starknet::ContractAddress;
+
+#[derive(Copy, Drop, Serde)]
+#[dojo::event]
+pub struct GameInitialized {
+    #[key]
+    pub game_id: u64,
+    pub player: ContractAddress,
+    pub game_params: GameParams,
+    pub time_stamp: u64,
+}
+
+#[derive(Copy, Drop, Serde)]
+#[dojo::event]
+pub struct CardDealt {
+    #[key]
+    pub game_id: u64,
+    pub player_id: ContractAddress,
+    pub deck_id: u64,
+    pub time_stamp: u64,
+}
+
+#[derive(Copy, Drop, Serde)]
+#[dojo::event]
+pub struct HandCreated {
+    #[key]
+    pub game_id: u64,
+    pub player_id: ContractAddress,
+    pub time_stamp: u64,
+}
+
+#[derive(Drop, Serde)]
+#[dojo::event]
+pub struct HandResolved {
+    #[key]
+    pub game_id: u64,
+    pub players: Array<ContractAddress>,
+}
 
 #[derive(Serde, Copy, Drop, PartialEq)]
 #[dojo::model]

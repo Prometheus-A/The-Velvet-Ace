@@ -1,6 +1,7 @@
 use starknet::ContractAddress;
 use super::card::Card;
 use poker::traits::game::GameTrait;
+use core::num::traits::Zero;
 
 /// CashGame. same as the `true` value for the Tournament. CashGame should allow incoming players...
 /// may be refactored in the future.
@@ -53,7 +54,7 @@ pub struct Game {
     has_ended: bool,
     current_round: u8,
     round_in_progress: bool,
-    current_player_count: usize,
+    current_player_count: u32,
     players: Array<ContractAddress>,
     deck: Array<u64>,
     next_player: Option<ContractAddress>,
@@ -61,4 +62,149 @@ pub struct Game {
     pot: u256,
     current_bet: u256,
     params: GameParams,
+    reshuffled: u64,
 }
+
+// then we can implemnt a list node here
+#[derive(Drop, Serde, Copy, PartialEq)]
+pub struct Node {
+    pub val: ContractAddress,
+    pub next: Span<Node>,
+}
+
+// impl NodeSerde<T, +Serde<T>> of Serde<Node<T>> {
+//     fn serialize(self: @Node<T>, ref output: Array<felt252>) {
+//         // Implement serialization logic here
+//         output.append(Serde::serialize(self.val));
+//         output.append(Serde::serialize(*self.next));
+//     }
+
+//     fn deserialize(data: Span<u8>) -> Node<T> {
+//         // Implement deserialization logic here
+//         let val = Serde::deserialize(data.slice(0, data.len() / 2));
+//         let next = Serde::deserialize(data.slice(data.len() / 2, data.len()));
+//         Node { val, next }
+//     }
+// }
+
+#[derive(Drop, Serde, Copy, PartialEq)]
+pub struct ContractList {
+    pub head: Node,
+    pub tail: Node,
+    pub count: u64,
+}
+
+pub trait ListTrait<T, V> {
+    fn new() -> T;
+    fn append(ref self: T, val: V);
+    fn insert(ref self: T, val: V, index: u32);
+    fn get(self: @T, index: u32) -> Option<V>;
+    fn remove(ref self: T, index: u32) -> bool;
+}
+
+pub impl ContractListImpl of ListTrait<ContractList, ContractAddress> {
+    fn new() -> ContractList {
+        let node = Node { val: Zero::zero(), next: array![].span() };
+        ContractList { head: node, tail: node, count: 0 }
+    }
+
+    fn append(ref self: ContractList, val: ContractAddress) {}
+
+    fn insert(ref self: ContractList, val: ContractAddress, index: u32) {}
+
+    fn get(self: @ContractList, index: u32) -> Option<ContractAddress> {
+        Option::None
+    }
+
+    fn remove(ref self: ContractList, index: u32) -> bool {
+        false
+    }
+}
+// public class LinkedList {
+
+//     private class Node {
+//         int val;
+//         Node next;
+//     }
+
+// Node head;
+// Node tail;
+
+// public int get(int index) {
+//     int iterator = 0;
+//     Node node = head;
+
+//     while (node != null) {
+//         if (iterator == index) {
+//             return node.val;
+//         }
+//         iterator++;
+//         node = node.next;
+//     }
+//     return -1;
+// }
+
+// public void insertHead(int val) {
+//     Node node = new Node();
+//     node.val = val;
+//     if (head == null) {
+//         head = node;
+//         tail = node;
+//     } else {
+//         node.next = head;
+//         head = node;
+//     }
+// }
+
+// public void insertTail(int val) {
+//     Node newNode = new Node();
+//     newNode.val = val;
+//         if (head == null) {
+//             head = newNode;
+//             tail = newNode;
+//         } else {
+//             Node node = head;
+//             while (node.next != null) {
+//                 node = node.next;
+//             }
+//             node.next = newNode;
+
+// //            tail.next = newNode;
+// //            tail = newNode;
+//         }
+//     }
+
+//     public boolean remove(int index) {
+//         Node previous = null;
+//         Node current = head;
+//         int i = 0;
+
+//         while (current != null){
+//             if (i == index) {
+//                 if (previous == null) {
+//                     head = head.next;
+//                     return true;
+//                 }
+//                 System.out.println(i + " equals "+ index);
+//                 previous.next = current.next;
+//                 return true;
+//             }
+//             previous = current;
+//             current = current.next;
+//             i++;
+//         }
+//         return false;
+//     }
+
+//     public ArrayList<Integer> getValues() {
+//         ArrayList<Integer> values = new ArrayList<>();
+//         Node node = head;
+//         while (node != null) {
+//             values.add(node.val);
+//             node = node.next;
+//         }
+//         return values;
+//     }
+// }
+
+

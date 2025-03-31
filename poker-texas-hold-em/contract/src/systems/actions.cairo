@@ -559,8 +559,8 @@ pub mod actions {
             let mut world = self.world_default();
             let mut game: Game = world.read_model(game_id);
 
-            assert(game.in_progress, 'Game not in progress');
-            assert(game.round_in_progress, 'Round not in progress');
+            assert(game.in_progress, GameErrors::GAME_NOT_IN_PROGRESS);
+            assert(game.round_in_progress, GameErrors::ROUND_NOT_IN_PROGRESS);
 
             // Collect all players from the game
             let mut players: Array<Player> = array![];
@@ -572,20 +572,24 @@ pub mod actions {
             // Reset player hands and decks
             self._resolve_hands(ref players);
 
+            // Write the modified players back to the world storage first
+            for player in players.span() {
+                world.write_model(@player);
+            }
+
             // Update game state for the next round
             game.current_round += 1;
             game.round_in_progress = false;
             game.community_cards = array![];
             game.current_bet = 0;
 
-            // Reset player states for the next round - fixed assignment error
-            for player_ref in players.span() {
-                // Only set in_round to true for players still in the game (not folded)
-                if player_ref.is_in_game(game_id) {
-                    // Create a mutable copy of the player
-                    let player_address = *player_ref.id;
-                    let mut player_copy: Player = world.read_model(player_address);
+            // Reset player states for the next round
+            for player_ref in game.players.span() {
+                // Read the player with resolved hands from the world
+                let mut player_copy: Player = world.read_model(*player_ref);
 
+                // Only set in_round to true for players still in the game (not folded)
+                if player_copy.is_in_game(game_id) {
                     // Modify the copy
                     player_copy.current_bet = 0;
                     player_copy.in_round = true;
@@ -622,14 +626,14 @@ pub mod actions {
             let mut game: Game = world.read_model(game_id);
 
             // Ensure game exists and is in a valid state
-            assert(game.in_progress, 'Game not in progress');
-            assert(game.round_in_progress, 'Round not in progress');
+            assert(game.in_progress, GameErrors::GAME_NOT_IN_PROGRESS);
+            assert(game.round_in_progress, GameErrors::ROUND_NOT_IN_PROGRESS);
 
             // Check if we can add more community cards (max 5)
-            assert(game.community_cards.len() < 5, 'Community cards full');
+            assert(game.community_cards.len() < 5, GameErrors::COMMUNITY_CARDS_FULL);
 
             let deck_ids = @game.deck;
-            assert(!deck_ids.is_empty(), 'No decks available');
+            assert(!deck_ids.is_empty(), GameErrors::NO_DECKS_AVAILABLE);
 
             // Cyclically select a deck based on the current community card count
             // This distributes card dealing across all available decks

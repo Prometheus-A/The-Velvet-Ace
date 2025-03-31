@@ -42,6 +42,14 @@ pub struct HandResolved {
     pub players: Array<ContractAddress>,
 }
 
+#[derive(Drop, Serde)]
+#[dojo::event]
+struct RoundResolved {
+    #[key]
+    pub game_id: u64,
+    pub can_join: bool,
+}
+
 #[derive(Serde, Copy, Drop, PartialEq)]
 #[dojo::model]
 pub struct Id {

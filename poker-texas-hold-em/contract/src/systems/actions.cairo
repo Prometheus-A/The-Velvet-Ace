@@ -50,7 +50,7 @@ pub mod actions {
     // use dojo::world::{WorldStorage, WorldStorageTrait};
 
     use poker::models::base::{
-        GameErrors, Id, GameInitialized, CardDealt, HandCreated, HandResolved,
+        GameErrors, Id, GameInitialized, CardDealt, HandCreated, HandResolved, RoundResolved,
     };
     use poker::models::card::{Card, CardTrait};
     use poker::models::deck::{Deck, DeckTrait};
@@ -62,12 +62,6 @@ pub mod actions {
     pub const GAME: felt252 = 'GAME';
     pub const DECK: felt252 = 'DECK';
     pub const MAX_NO_OF_CHIPS: u128 = 100000; /// for test, 1 chip = 1 usd.
-
-    #[derive(Drop, Clone, Serde, starknet::Event)]
-    struct RoundResolvedEvent {
-        game_id: u64,
-        can_join: bool
-    }
 
 
     #[abi(embed_v0)]
@@ -426,11 +420,10 @@ pub mod actions {
             let first_player = players.at(0);
             let game_id = first_player.extract_current_game_id();
 
-            for player in players
-                .span() {
-                    let current_game_id = player.extract_current_game_id();
-                    assert(current_game_id == game_id, 'Players in different games');
-                };
+            for player in players.span() {
+                let current_game_id = player.extract_current_game_id();
+                assert(current_game_id == game_id, 'Players in different games');
+            };
 
             let mut world = self.world_default();
             let game: Game = world.read_model(*game_id);
@@ -439,35 +432,33 @@ pub mod actions {
 
             // let mut deck: Deck = world.read_model(game_id);
             let mut current_index: usize = 0;
-            for mut player in players
-                .span() {
-                    let mut hand: Hand = world.read_model(*player.id);
-                    hand.new_hand();
+            for mut player in players.span() {
+                let mut hand: Hand = world.read_model(*player.id);
+                hand.new_hand();
 
-                    for _ in 0_u8
-                        ..2_u8 {
-                            let index = current_index % deck_ids.len();
-                            let deck_id: u64 = *deck_ids.at(index);
-                            let mut deck: Deck = world.read_model(deck_id);
-                            hand.add_card(deck.deal_card());
+                for _ in 0_u8..2_u8 {
+                    let index = current_index % deck_ids.len();
+                    let deck_id: u64 = *deck_ids.at(index);
+                    let mut deck: Deck = world.read_model(deck_id);
+                    hand.add_card(deck.deal_card());
 
-                            world.write_model(@deck); // should work, ;)
-                            current_index += 1;
+                    world.write_model(@deck); // should work, ;)
+                    current_index += 1;
 
-                            world
-                                .emit_event(
-                                    @CardDealt {
-                                        game_id: *game_id,
-                                        player_id: *player.id,
-                                        deck_id: deck.id,
-                                        time_stamp: starknet::get_block_timestamp(),
-                                    },
-                                );
-                        };
-
-                    world.write_model(@hand);
-                    world.write_model(player);
+                    world
+                        .emit_event(
+                            @CardDealt {
+                                game_id: *game_id,
+                                player_id: *player.id,
+                                deck_id: deck.id,
+                                time_stamp: starknet::get_block_timestamp(),
+                            },
+                        );
                 };
+
+                world.write_model(@hand);
+                world.write_model(player);
+            };
         }
 
         fn _resolve_hands(
@@ -573,12 +564,10 @@ pub mod actions {
 
             // Collect all players from the game
             let mut players: Array<Player> = array![];
-            for player_address in game
-                .players
-                .span() {
-                    let player: Player = world.read_model(*player_address);
-                    players.append(player);
-                }
+            for player_address in game.players.span() {
+                let player: Player = world.read_model(*player_address);
+                players.append(player);
+            };
 
             // Reset player hands and decks
             self._resolve_hands(ref players);
@@ -586,26 +575,32 @@ pub mod actions {
             // Update game state for the next round
             game.current_round += 1;
             game.round_in_progress = false;
-            game.community_cards = array![]; // Clear community cards
-            game.current_bet = 0; // Reset current bet
+            game.community_cards = array![];
+            game.current_bet = 0;
 
-            // Reset player states for the next round
-            for mut player in players
-                .span() {
-                    // Only set in_round to true for players still in the game (not folded)
-                    if player.is_in_game(@game_id) {
-                        player.current_bet = 0;
-                        player.in_round = true;
-                        world.write_model(@player);
-                    }
+            // Reset player states for the next round - fixed assignment error
+            for player_ref in players.span() {
+                // Only set in_round to true for players still in the game (not folded)
+                if player_ref.is_in_game(game_id) {
+                    // Create a mutable copy of the player
+                    let player_address = *player_ref.id;
+                    let mut player_copy: Player = world.read_model(player_address);
+
+                    // Modify the copy
+                    player_copy.current_bet = 0;
+                    player_copy.in_round = true;
+
+                    // Write the modified copy back to world
+                    world.write_model(@player_copy);
                 }
+            };
 
             // Check if the game allows new players to join based on game parameters
-            let can_join = game.is_allowable();
+            let _can_join = game.is_allowable();
 
             world.write_model(@game);
 
-            world.emit(RoundResolvedEvent { game_id: game_id, can_join: can_join });
+            world.emit_event(@RoundResolved { game_id: game_id, can_join: _can_join });
         }
 
         /// dev: @psychemist
@@ -633,7 +628,7 @@ pub mod actions {
             // Check if we can add more community cards (max 5)
             assert(game.community_cards.len() < 5, 'Community cards full');
 
-            let deck_ids = game.deck;
+            let deck_ids = @game.deck;
             assert(!deck_ids.is_empty(), 'No decks available');
 
             // Cyclically select a deck based on the current community card count

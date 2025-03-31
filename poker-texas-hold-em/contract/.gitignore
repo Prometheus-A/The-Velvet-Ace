@@ -1,3 +1,4 @@
 target
 dojo_mainnet.toml
 .tool-versions
+.DS_Store

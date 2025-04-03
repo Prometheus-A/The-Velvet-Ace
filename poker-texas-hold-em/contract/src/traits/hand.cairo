@@ -162,8 +162,7 @@ pub impl HandImpl of HandTrait {
                 winning_hands = array![];
                 winning_hands.append(evaluated_hand);
                 highest_rank = current_rank;
-            }
-            else if current_rank == highest_rank && winning_hands.len() > 0 {
+            } else if current_rank == highest_rank && winning_hands.len() > 0 {
                 // implement kicker. Only works for the current_winner variable
                 // retrieve the former current_winner already stored and the current player,
                 // and compare both hands. This should be done in another internal function and be
@@ -185,33 +184,13 @@ pub impl HandImpl of HandTrait {
                 // kickers, arrange the array accordingly. might be implemented by someone else.
                 // here, hands have been changed, right?
                 // Handle kicker comparison for equal ranks
-                if highest_rank == HandRank::STRAIGHT || highest_rank == HandRank::STRAIGHT_FLUSH {
-                    // For straights, compare the highest card
-                    let current_high_card = get_high_card(evaluated_hand.cards);
-                    let existing_high_card = get_high_card((*winning_hands.at(0)).cards);
+                let (winning_hand, kicker_cards) = extract_kicker(equal_rank_hands, highest_rank);
 
-                    if current_high_card > existing_high_card {
-                        winning_hands = array![];
-                        winning_hands.append(evaluated_hand);
-                    } else if current_high_card == existing_high_card && game_params.kicker_split {
-                        winning_hands.append(evaluated_hand);
-                    }
-                } else {
-                    // For other hand types, compare the kickers
-                    let kicker_result = compare_kickers(
-                        evaluated_hand.cards.clone(),
-                        (*winning_hands.at(0)).cards.clone(),
-                        highest_rank,
-                    );
-
-                    if kicker_result > 0 {
-                        // Current hand is better
-                        winning_hands = array![];
-                        winning_hands.append(evaluated_hand);
-                    } else if kicker_result == 0 && game_params.kicker_split {
-                        // Exact tie and kicker split is enabled
-                        winning_hands.append(evaluated_hand);
-                    }
+                if winning_hand.player != (*winning_hands.at(0)).player {
+                    winning_hands = array![];
+                    winning_hands.append(winning_hand);
+                } else if game_params.kicker_split {
+                    winning_hands.append(evaluated_hand);
                 }
             }
 

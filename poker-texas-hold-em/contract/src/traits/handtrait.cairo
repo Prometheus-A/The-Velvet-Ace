@@ -1,4 +1,4 @@
-use poker::models::hand::Hand;
+use poker::models::hand::{Hand, HandRank};
 use poker::models::card::Card;
 use poker::models::game::GameParams;
 use super::handimpl::HandImpl;
@@ -27,11 +27,11 @@ pub trait HandTrait {
     /// # Returns
     /// A tuple containing:
     /// 1. A new Hand with the best 5 cards found
-    /// 2. The rank of the hand as a u16 (using HandRank constants)
+    /// 2. The rank of the hand as HandRank
     ///
     /// # Panics
     /// Panics if the total number of cards is not exactly 7
-    fn rank(self: @Hand, community_cards: Array<Card>) -> (Hand, u16);
+    fn rank(self: @Hand, community_cards: Array<Card>) -> (Hand, HandRank);
 
     /// @Birdmannn
     /// Compares all hands combined with the community cards in the game to evaluate the highest of
@@ -56,7 +56,7 @@ pub trait HandTrait {
     /// The len > 0 only if game_params.kicker_split is true.
     fn compare_hands(
         hands: Array<Hand>, community_cards: Array<Card>, game_params: GameParams,
-    ) -> (Span<Hand>, u16, Span<Card>);
+    ) -> (Span<Hand>, HandRank, Span<Card>);
     fn remove_card(ref self: Hand, pos: usize) -> Card;
     fn reveal(self: @Hand) -> Span<Card>;
     fn add_card(ref self: Hand, card: Card);

@@ -573,6 +573,36 @@ pub mod actions {
                 }
             };
 
+            // dev: @Oluebube01
+            // Collect hands of all players still in the game and in the round
+            let mut active_hands: Array<Hand> = array![];
+            for player_ref in game.players.span() {
+                let player: Player = world.read_model(*player_ref);
+                if player.is_in_game(game_id) && player.in_round {
+                    let hand: Hand = world.read_model(*player.id);
+                    active_hands.append(hand);
+                }
+            };
+
+            // Ensure there are active hands to compare
+            assert(!active_hands.is_empty(), 'No active hands to compare');
+
+            // Determine the winning hand(s) using HandTrait::compare_hands
+            let (winning_hands, best_combination) = HandTrait::compare_hands(@active_hands);
+
+            // Emit an event with the winners of the round
+            let mut winner_ids: Array<ContractAddress> = array![];
+            for winning_hand in winning_hands.span() {
+                winner_ids.append(*winning_hand.owner_id());
+            };
+
+            world.emit_event(@RoundResolved {
+                game_id: game_id,
+                winners: winner_ids,
+                best_combination: best_combination,
+            });
+
+
             // Check if the game allows new players to join based on game parameters
             let _can_join = game.is_allowable();
 
@@ -580,6 +610,7 @@ pub mod actions {
 
             world.emit_event(@RoundResolved { game_id: game_id, can_join: _can_join });
         }
+
 
         /// dev: @psychemist
         ///
@@ -629,6 +660,95 @@ pub mod actions {
         // extracts the winning hands
         fn extract_winner() -> (Array<Hand>, Option<Array<Card>>) {
             (array![], Option::None)
+        }
+
+        // dev: @Oluebube01
+        /// Resolves the game by determining the winner(s) and distributing chips
+        /// This function:
+        /// 1. Ensures the game exists and is in a valid state for resolution.
+        /// 2. Determines the winner(s) based on game rules.
+        /// 3. Distributes chips to the winner(s).
+        /// 4. Emits an event indicating the game has ended.
+        /// 5. Cleans up game state and player states.
+        ///
+        /// # Arguments
+        /// * `game_id` - The ID of the game to resolve.
+        fn resolve_game(ref self: ContractState, game_id: u64) {
+            let mut world = self.world_default();
+            let mut game: Game = world.read_model(game_id);
+
+            // Ensure the game exists and is in progress
+            assert(game.in_progress, GameErrors::GAME_NOT_IN_PROGRESS);
+            assert(!game.has_ended, GameErrors::GAME_ALREADY_ENDED);
+
+            // Collect all players in the game
+            let mut players: Array<Player> = array![];
+            for player_address in game.players.span() {
+            let player: Player = world.read_model(*player_address);
+            players.append(player);
+            };
+
+            // Ensure there are players in the game
+            assert(!players.is_empty(), 'No players in the game');
+
+            // Resolve hands to determine the winner(s)
+            let mut active_hands: Array<Hand> = array![];
+            for player in players.span() {
+            if player.is_in_game(game_id) && player.in_round {
+                let hand: Hand = world.read_model(*player.id);
+                active_hands.append(hand);
+            }
+            };
+
+            // Ensure there are active hands to compare
+            assert(!active_hands.is_empty(), 'No active hands to compare');
+
+            let (winning_hands, best_combination) = HandTrait::compare_hands(@active_hands);
+
+            // Distribute chips to the winner(s)
+            let mut winner_ids: Array<ContractAddress> = array![];
+            let chips_to_distribute = game.pot / winning_hands.len();
+            for winning_hand in winning_hands.span() {
+            let mut winner: Player = world.read_model(*winning_hand.owner_id());
+            winner.chips += chips_to_distribute;
+            winner_ids.append(*winner.id);
+            world.write_model(@winner);
+            };
+
+            // Mark the game as ended
+            game.has_ended = true;
+            game.in_progress = false;
+            world.write_model(@game);
+
+            // Emit an event indicating the game has ended
+            world.emit_event(@GameEnded {
+            game_id: game_id,
+            winners: winner_ids,
+            best_combination: best_combination,
+            pot: game.pot,
+            time_stamp: starknet::get_block_timestamp(),
+            });
+
+            // Clean up player states
+            for player in players.span() {
+            let mut player_copy: Player = world.read_model(*player.id);
+            player_copy.locked = (false, 0);
+            player_copy.in_round = false;
+            world.write_model(@player_copy);
+            };
+
+            // Check the ownable field in GameParams
+            match game.params.ownable {
+                Option::Some(owner_address) => {
+                    // Ensure the caller matches the owner address
+                    let caller: ContractAddress = get_caller_address();
+                    assert(caller == owner_address, GameErrors::UNAUTHORIZED);
+                },
+                Option::None => {
+                    // Panic if the game is not ownable
+                    assert(false, GameErrors::GAME_CANNOT_BE_RESOLVED);
+                },
+            };
         }
     }
 }

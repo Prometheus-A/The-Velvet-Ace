@@ -48,6 +48,8 @@ struct RoundResolved {
     #[key]
     pub game_id: u64,
     pub can_join: bool,
+    pub winners: Array<ContractAddress>,
+    pub best_combination: Array<u8>,
 }
 
 #[derive(Serde, Copy, Drop, PartialEq)]
@@ -75,4 +77,6 @@ pub mod GameErrors {
     pub const ENTRY_DISALLOWED: felt252 = 'ENTRY DISALLOWED';
     pub const COMMUNITY_CARDS_FULL: felt252 = 'COMMUNITY_CARDS_FULL';
     pub const NO_DECKS_AVAILABLE: felt252 = 'NO_DECKS_AVAILABLE';
+    pub const UNAUTHORIZED: felt252 = 'UNAUTHORIZED';
+    pub const GAME_CANNOT_BE_RESOLVED: felt252 = 'GAME_CANNOT_BE_RESOLVED';
 }

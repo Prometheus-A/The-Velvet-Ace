@@ -8,12 +8,13 @@ pub mod actions {
     // use dojo::world::{WorldStorage, WorldStorageTrait};
 
     use poker::models::base::{
-        GameErrors, Id, GameInitialized, CardDealt, HandCreated, HandResolved, RoundResolved,
+        GameErrors, Id, GameInitialized, CardDealt, HandCreated, HandResolved, RoundResolved, GameEnded,
     };
     use poker::models::card::{Card, CardTrait};
     use poker::models::deck::{Deck, DeckTrait};
     use poker::models::game::{Game, GameMode, GameParams, GameTrait};
-    use poker::models::hand::{Hand, HandTrait};
+    use poker::models::hand::{Hand, HandTrait, WinningHandTrait};
+    use poker::models::hand::WinningHandTrait; // Ensure the trait providing `owner_id` is imported
     use poker::models::player::{Player, PlayerTrait, get_default_player};
     use poker::traits::game::get_default_game_params;
     use super::super::interface::IActions;
@@ -522,7 +523,7 @@ pub mod actions {
         ///
         /// # Arguments
         /// * `game_id` - The ID of the game whose round is being resolved
-        fn _resolve_round(ref self: ContractState, game_id: u64) {
+        fn _resolve_round(ref self: ContractState, game_id: u64, winners: Array<ContractAddress>, best_combination: Array<Card>, can_join: bool) {
             // should call resolve_hands()
             // should write back the player and the game to the world
             // all players should be set back in the next round
@@ -577,10 +578,11 @@ pub mod actions {
             // Collect hands of all players still in the game and in the round
             let mut active_hands: Array<Hand> = array![];
             for player_ref in game.players.span() {
-                let player: Player = world.read_model(*player_ref);
+                let player: Player = world.read_model(player_ref);
                 if player.is_in_game(game_id) && player.in_round {
                     let hand: Hand = world.read_model(*player.id);
-                    active_hands.append(hand);
+                    let hand_cast: Hand = Hand::from(hand);
+                    active_hands.append(hand_cast);
                 }
             };
 
@@ -588,27 +590,33 @@ pub mod actions {
             assert(!active_hands.is_empty(), 'No active hands to compare');
 
             // Determine the winning hand(s) using HandTrait::compare_hands
-            let (winning_hands, best_combination) = HandTrait::compare_hands(@active_hands);
+            let compare_result = HandTrait::compare_hands(@active_hands, game_id, world);
+            let winning_hands = compare_result.winning_hands;
+            let best_combination = compare_result.best_combination;
 
             // Emit an event with the winners of the round
+            
             let mut winner_ids: Array<ContractAddress> = array![];
+
             for winning_hand in winning_hands.span() {
-                winner_ids.append(*winning_hand.owner_id());
+                // Ensure `winning_hand` implements the trait providing `owner_id`
+                let owner_id = winning_hand.owner_id();
+                winner_ids.append(owner_id);
             };
-
-            world.emit_event(@RoundResolved {
-                game_id: game_id,
-                winners: winner_ids,
-                best_combination: best_combination,
-            });
-
 
             // Check if the game allows new players to join based on game parameters
             let _can_join = game.is_allowable();
 
             world.write_model(@game);
 
-            world.emit_event(@RoundResolved { game_id: game_id, can_join: _can_join });
+
+            world.emit_event(@RoundResolved {
+                game_id: game_id,
+                winners: winner_ids,
+                best_combination: best_combination,
+                can_join: _can_join,
+            })
+
         }
 
 
@@ -694,8 +702,8 @@ pub mod actions {
             // Resolve hands to determine the winner(s)
             let mut active_hands: Array<Hand> = array![];
             for player in players.span() {
-            if player.is_in_game(game_id) && player.in_round {
-                let hand: Hand = world.read_model(*player.id);
+            if *player.is_in_game(game_id) && player.in_round {
+                let hand: Hand = world.read_model(player.id);
                 active_hands.append(hand);
             }
             };
@@ -703,15 +711,18 @@ pub mod actions {
             // Ensure there are active hands to compare
             assert(!active_hands.is_empty(), 'No active hands to compare');
 
-            let (winning_hands, best_combination) = HandTrait::compare_hands(@active_hands);
+            let compare_result = HandTrait::compare_hands(@active_hands, game_id, world);
+            let winning_hands = compare_result.winning_hands;
+            let best_combination = compare_result.best_combination;
 
             // Distribute chips to the winner(s)
             let mut winner_ids: Array<ContractAddress> = array![];
-            let chips_to_distribute = game.pot / winning_hands.len();
-            for winning_hand in winning_hands.span() {
-            let mut winner: Player = world.read_model(*winning_hand.owner_id());
+            let chips_to_distribute = game.pot / winning_hands.span().ArrayTrait::len();
+
+            for winning_hand in winning_hands.iter() {
+            let mut winner: Player = world.read_model(winning_hand.owner_id());
             winner.chips += chips_to_distribute;
-            winner_ids.append(*winner.id);
+            winner_ids.append(winner.id);
             world.write_model(@winner);
             };
 
@@ -736,8 +747,13 @@ pub mod actions {
             player_copy.in_round = false;
             world.write_model(@player_copy);
             };
+        
 
             // Check the ownable field in GameParams
+            let game_params: GameParams = game.params;
+
+            // Check if the game is ownable and if the caller is the owner
+            // If the game is ownable, ensure the caller is the owner
             match game.params.ownable {
                 Option::Some(owner_address) => {
                     // Ensure the caller matches the owner address
@@ -746,9 +762,9 @@ pub mod actions {
                 },
                 Option::None => {
                     // Panic if the game is not ownable
-                    assert(false, GameErrors::GAME_CANNOT_BE_RESOLVED);
+                    panic(GameErrors::GAME_CANNOT_BE_RESOLVED);
                 },
-            };
+            }
         }
     }
 }

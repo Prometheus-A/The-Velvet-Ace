@@ -25,6 +25,7 @@ pub struct GameParams {
     kicker_split: bool,
     min_amount_of_chips: u256,
     blind_spacing: u16,
+    ownable: option<ContractAddress>,
 }
 
 /// id - the game id
@@ -63,6 +64,10 @@ pub struct Game {
     current_bet: u256,
     params: GameParams,
     reshuffled: u64,
+    winners: Array<ContractAddress>,
+    best_combination: Array<card>,
+    pot: u256,
+    time_stamp: u64,
 }
 
 // then we can implemnt a list node here

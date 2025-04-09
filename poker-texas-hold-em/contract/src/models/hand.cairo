@@ -23,32 +23,76 @@ pub struct Hand {
 /// TWO_PAIR: Two cards of one rank, and two cards of another rank.
 /// ONE_PAIR: Two cards of the same rank.
 /// HIGH_CARD: None of the above.
-pub mod HandRank {
-    pub const ROYAL_FLUSH: u16 = 10;
-    pub const STRAIGHT_FLUSH: u16 = 9;
-    pub const FOUR_OF_A_KIND: u16 = 8;
-    pub const FULL_HOUSE: u16 = 7;
-    pub const FLUSH: u16 = 6;
-    pub const STRAIGHT: u16 = 5;
-    pub const THREE_OF_A_KIND: u16 = 4;
-    pub const TWO_PAIR: u16 = 3;
-    pub const ONE_PAIR: u16 = 2;
-    pub const HIGH_CARD: u16 = 1;
+/// UNDEFINED: No card is present.
+#[derive(Drop, Copy, Serde, PartialEq)]
+pub enum HandRank {
+    ROYAL_FLUSH,
+    STRAIGHT_FLUSH,
+    FOUR_OF_A_KIND,
+    FULL_HOUSE,
+    FLUSH,
+    STRAIGHT,
+    THREE_OF_A_KIND,
+    TWO_PAIR,
+    ONE_PAIR,
+    HIGH_CARD,
+    UNDEFINED,
+}
 
-    pub fn to_bytearray(self: u16) -> ByteArray {
+impl HandRankU16 of Into<HandRank, u16> {
+    #[inline(always)]
+    fn into(self: HandRank) -> u16 {
         match self {
-            0 => "UNDEFINED",
-            1 => "HIGH CARD",
-            2 => "ONE PAIR",
-            3 => "TWO PAIR",
-            4 => "THREE OF A KIND",
-            5 => "STRAIGHT",
-            6 => "FLUSH",
-            7 => "FULL HOUSE",
-            8 => "FOUR OF A KIND",
-            9 => "STRAIGHT FLUSH",
-            10 => "ROYAL FLUSH",
-            _ => "UNDEFINED",
+            HandRank::UNDEFINED => 0,
+            HandRank::HIGH_CARD => 1,
+            HandRank::ONE_PAIR => 2,
+            HandRank::TWO_PAIR => 3,
+            HandRank::THREE_OF_A_KIND => 4,
+            HandRank::STRAIGHT => 5,
+            HandRank::FLUSH => 6,
+            HandRank::FULL_HOUSE => 7,
+            HandRank::FOUR_OF_A_KIND => 8,
+            HandRank::STRAIGHT_FLUSH => 9,
+            HandRank::ROYAL_FLUSH => 10,
+        }
+    }
+}
+
+impl HandRankByteArray of Into<HandRank, ByteArray> {
+    #[inline(always)]
+    fn into(self: HandRank) -> ByteArray {
+        match self {
+            HandRank::UNDEFINED => "UNDEFINED",
+            HandRank::HIGH_CARD => "HIGH CARD",
+            HandRank::ONE_PAIR => "ONE PAIR",
+            HandRank::TWO_PAIR => "TWO PAIR",
+            HandRank::THREE_OF_A_KIND => "THREE OF A KIND",
+            HandRank::STRAIGHT => "STRAIGHT",
+            HandRank::FLUSH => "FLUSH",
+            HandRank::FULL_HOUSE => "FULL HOUSE",
+            HandRank::FOUR_OF_A_KIND => "FOUR OF A KIND",
+            HandRank::STRAIGHT_FLUSH => "STRAIGHT FLUSH",
+            HandRank::ROYAL_FLUSH => "ROYAL FLUSH",
+        }
+    }
+}
+
+impl U16HandRank of Into<u16, HandRank> {
+    #[inline(always)]
+    fn into(self: u16) -> HandRank {
+        match self {
+            0 => HandRank::UNDEFINED,
+            1 => HandRank::HIGH_CARD,
+            2 => HandRank::ONE_PAIR,
+            3 => HandRank::TWO_PAIR,
+            4 => HandRank::THREE_OF_A_KIND,
+            5 => HandRank::STRAIGHT,
+            6 => HandRank::FLUSH,
+            7 => HandRank::FULL_HOUSE,
+            8 => HandRank::FOUR_OF_A_KIND,
+            9 => HandRank::STRAIGHT_FLUSH,
+            10 => HandRank::ROYAL_FLUSH,
+            _ => HandRank::UNDEFINED,
         }
     }
 }
@@ -77,10 +121,11 @@ mod tests {
             Card { suit: Suits::DIAMONDS, value: 13 },
         ];
 
-        let (hand, hand_rank): (Hand, u16) = player_hand.rank(community_cards.clone());
-        println!("Player1 Hand rank is: {}", hand_rank);
+        let (hand, hand_rank): (Hand, HandRank) = player_hand.rank(community_cards.clone());
+        let rank: ByteArray = hand_rank.into();
+        println!("Player1 Hand rank is: {}", rank);
         assert(hand_rank == HandRank::STRAIGHT, 'NOT A STRAIGHT');
-        println!("Player1 new Hand to bytearray is:\n{}", hand.to_bytearray());
+        println!("Player1 new Hand to byte array is:\n{}", hand.to_bytearray());
 
         // feign a two pair
         let player2: ContractAddress = contract_address_const::<'PLAYER2'>();
@@ -90,21 +135,24 @@ mod tests {
 
         let player2_hand: Hand = Hand { player: player2, cards: player2_cards };
 
-        let (hand, hand_rank): (Hand, u16) = player2_hand.rank(community_cards.clone());
-        println!("Player2 Hand rank is: {}", hand_rank);
+        let (hand, hand_rank): (Hand, HandRank) = player2_hand.rank(community_cards.clone());
+        let rank: ByteArray = hand_rank.into();
+        println!("Player2 Hand rank is: {}", rank);
         assert(hand_rank == HandRank::TWO_PAIR, 'NOT A TWO PAIR');
         println!("Player2 new Hand to byte array is:\n{}", hand.to_bytearray());
 
         // NOTE: THIS IS WHEN THE VALUE OF KICKER_SPLIT IS FALSE.
-        let (hands, hand_rank, kickers): (Span<Hand>, u16, Span<Card>) = HandTrait::compare_hands(
+        let (hands, hand_rank, kickers): (Span<Hand>, HandRank, Span<Card>) =
+            HandTrait::compare_hands(
             array![player2_hand, player_hand], community_cards, Default::default(),
         );
 
         assert(kickers.len() == 0, 'KICKERS FOUND');
         assert(hands.len() == 1, 'INVALID HAND COUNT');
-        assert(hand_rank == HandRank::STRAIGHT, 'INVALID RANK');
+        assert(hand_rank == HandRank::STRAIGHT.into(), 'INVALID RANK');
 
-        println!("Hand rank to bytearray: {}", HandRank::to_bytearray(hand_rank));
+        let rank: ByteArray = hand_rank.into();
+        println!("Hand rank to bytearray: {}", rank);
 
         let winning_hand: @Hand = hands.at(0);
         assert(*winning_hand.player == player, 'INCORRECT WINNER');

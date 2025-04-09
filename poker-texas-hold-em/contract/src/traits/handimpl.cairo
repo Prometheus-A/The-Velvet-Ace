@@ -18,7 +18,7 @@ pub impl HandImpl of HandTrait {
     }
 
     /// @pope-h
-    fn rank(self: @Hand, community_cards: Array<Card>) -> (Hand, u16) {
+    fn rank(self: @Hand, community_cards: Array<Card>) -> (Hand, HandRank) {
         // this function can be called externally in the future.
         // (Self::default(), 0) // Temporary return value
 
@@ -72,40 +72,40 @@ pub impl HandImpl of HandTrait {
         let combinations = generate_combinations(all_cards.clone(), 5);
 
         // Evaluate each combination to find the best hand
-        let mut best_rank: u16 = HandRank::HIGH_CARD;
+        let mut best_rank: u16 = HandRank::UNDEFINED.into();
         let mut best_hand_cards: Array<Card> = array![];
         let mut i: usize = 0;
 
         while i < combinations.len() {
             let combo = combinations.at(i);
             let (hand_cards, rank) = evaluate_five_cards(combo.clone());
-            if rank > best_rank {
-                best_rank = rank;
+            if rank.into() > best_rank {
+                best_rank = rank.into();
                 best_hand_cards = hand_cards.clone();
             };
             i += 1;
         };
 
         let best_hand = Hand { player: *self.player, cards: best_hand_cards };
-        (best_hand, best_rank)
+        (best_hand, best_rank.into())
     }
 
     /// @Birdmannn
     fn compare_hands(
         hands: Array<Hand>, community_cards: Array<Card>, game_params: GameParams,
-    ) -> (Span<Hand>, u16, Span<Card>) {
+    ) -> (Span<Hand>, HandRank, Span<Card>) {
         let mut highest_rank: u16 = 0;
         let mut winning_hands: Array<Hand> = array![];
         let mut winning_new_hands: Array<Hand> = array![];
         let mut kicker_cards: Array<Card> = array![];
 
         for hand in hands {
-            let (new_hand, current_rank): (Hand, u16) = hand.rank(community_cards.clone());
-            if current_rank > highest_rank {
-                highest_rank = current_rank;
+            let (new_hand, current_rank): (Hand, HandRank) = hand.rank(community_cards.clone());
+            if current_rank.into() > highest_rank {
+                highest_rank = current_rank.into();
                 winning_hands = array![hand];
                 winning_new_hands = array![new_hand];
-            } else if current_rank == highest_rank {
+            } else if current_rank.into() == highest_rank {
                 winning_hands.append(hand);
                 winning_new_hands.append(new_hand);
             }
@@ -140,7 +140,7 @@ pub impl HandImpl of HandTrait {
             winning_hands = hands;
         }
 
-        (winning_hands.span(), highest_rank, kicker_cards.span())
+        (winning_hands.span(), highest_rank.into(), kicker_cards.span())
     }
 
     fn remove_card(ref self: Hand, pos: usize) -> Card {
@@ -309,7 +309,7 @@ fn pow(base: u32, exp: u32) -> u32 {
 ///
 /// # Author
 /// [@pope-h]
-fn evaluate_five_cards(cards: Array<Card>) -> (Array<Card>, u16) {
+fn evaluate_five_cards(cards: Array<Card>) -> (Array<Card>, HandRank) {
     assert(cards.len() == 5, 'Must have 5 cards');
 
     // Convert to array of (value, poker_value, suit) for Ace handling

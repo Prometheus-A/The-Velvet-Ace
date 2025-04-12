@@ -65,8 +65,7 @@ pub struct Game {
     params: GameParams,
     reshuffled: u64,
     winners: Array<ContractAddress>,
-    best_combination: Array<card>,
-    pot: u256,
+    best_combination: Array<Card>,
     time_stamp: u64,
 }
 

@@ -14,7 +14,6 @@ pub mod actions {
     use poker::models::deck::{Deck, DeckTrait};
     use poker::models::game::{Game, GameMode, GameParams, GameTrait};
     use poker::models::hand::{Hand, HandTrait, WinningHandTrait};
-    use poker::models::hand::WinningHandTrait; // Ensure the trait providing `owner_id` is imported
     use poker::models::player::{Player, PlayerTrait, get_default_player};
     use poker::traits::game::get_default_game_params;
     use super::super::interface::IActions;
@@ -68,7 +67,6 @@ pub mod actions {
                         game_id: game_id,
                         player: caller,
                         game_params: game.params,
-                        time_stamp: starknet::get_block_timestamp(),
                     },
                 );
 
@@ -735,20 +733,23 @@ pub mod actions {
             world.emit_event(@GameEnded {
             game_id: game_id,
             winners: winner_ids,
-            best_combination: best_combination,
-            pot: game.pot,
-            time_stamp: starknet::get_block_timestamp(),
+            best_combination: best_combination
             });
 
-            // Clean up player states
-            for player in players.span() {
-            let mut player_copy: Player = world.read_model(*player.id);
-            player_copy.locked = (false, 0);
-            player_copy.in_round = false;
-            world.write_model(@player_copy);
-            };
         
+        // Clean up player states
+        for player in players.span() {
+            let mut player_copy: Player = world.read_model(player.id);
 
+            // Reset player state
+            player_copy.locked = (false, 0); // Unlock the player and remove game association
+            player_copy.in_round = false; // Set in_round to false
+            player_copy.current_bet = 0; // Reset current bet
+            player_copy.is_dealer = false; // Reset dealer status
+
+            // Write the updated player state back to the world
+            world.write_model(@player_copy);
+        };
             // Check the ownable field in GameParams
             let game_params: GameParams = game.params;
 

@@ -24,10 +24,11 @@ pub impl CardImpl of CardTrait {
         }
 
         match *self.suit {
-            0 => "SPADES",
-            1 => "CLUBS",
-            2 => "DIAMONDS",
-            3 => "HEARTS",
+            0 => "UNKNOWN",
+            1 => "SPADES",
+            2 => "CLUBS",
+            3 => "DIAMONDS",
+            4 => "HEARTS",
             _ => "UNKNOWN",
         }
     }
@@ -74,10 +75,10 @@ pub impl CardImpl of CardTrait {
 // SHOULD BE ADJUSTED BASED ON CARD IMAGE
 // H, C, S, D
 pub mod Suits {
-    pub const SPADES: u8 = 0;
-    pub const CLUBS: u8 = 1;
-    pub const DIAMONDS: u8 = 2;
-    pub const HEARTS: u8 = 3;
+    pub const SPADES: u8 = 1;
+    pub const CLUBS: u8 = 2;
+    pub const DIAMONDS: u8 = 3;
+    pub const HEARTS: u8 = 4;
 }
 
 #[cfg(test)]

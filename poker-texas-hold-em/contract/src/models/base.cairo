@@ -5,6 +5,8 @@
 use poker::models::game::GameParams;
 use starknet::ContractAddress;
 
+/// EVENTS
+
 #[derive(Copy, Drop, Serde)]
 #[dojo::event]
 pub struct GameInitialized {
@@ -44,11 +46,24 @@ pub struct HandResolved {
 
 #[derive(Drop, Serde)]
 #[dojo::event]
-struct RoundResolved {
+pub struct RoundResolved {
     #[key]
     pub game_id: u64,
     pub can_join: bool,
 }
+
+#[derive(Drop, Serde)]
+#[dojo::event]
+pub struct PlayerJoined {
+    #[key]
+    pub game_id: u64,
+    #[key]
+    pub player_id: ContractAddress,
+    pub player_count: u32,
+    pub expected_no_of_players: u32,
+}
+
+/// MODEL
 
 #[derive(Serde, Copy, Drop, PartialEq)]
 #[dojo::model]

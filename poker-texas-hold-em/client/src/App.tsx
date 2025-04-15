@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ParsedEntity, QueryBuilder } from "@dojoengine/sdk";
 import { getEntityIdFromKeys } from "@dojoengine/utils";
 import { AccountInterface, addAddressPadding, CairoCustomEnum } from "starknet";
@@ -9,14 +10,10 @@ import { useAccount } from "@starknet-react/core";
 import { WalletAccount } from "./wallet-account.tsx";
 import { HistoricalEvents } from "./historical-events.tsx";
 import { useDojoSDK, useModel } from "@dojoengine/sdk/react";
+import NotFound from './ui/pages/NotFound';
+import LandingPage from './ui/pages/LandingPage';
 
-/**
- * Main application component that provides game functionality and UI.
- * Handles entity subscriptions, state management, and user interactions.
- *
- * @param props.sdk - The Dojo SDK instance configured with the game schema
- */
-function App() {
+function GameComponent() {
     const { useDojoStore, client, sdk } = useDojoSDK();
     const { account } = useAccount();
     const state = useDojoStore((state) => state);
@@ -284,6 +281,18 @@ function App() {
                 <HistoricalEvents />
             </div>
         </div>
+    );
+}
+
+function App() {
+    return (
+        <BrowserRouter>
+            <Routes>
+                <Route index element={<LandingPage />} />
+                <Route path="/game" element={<GameComponent />} />
+                <Route path="*" element={<NotFound />} />
+            </Routes>
+        </BrowserRouter>
     );
 }
 

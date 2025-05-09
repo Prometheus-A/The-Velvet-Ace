@@ -6,7 +6,7 @@ pub mod actions {
     use dojo::event::EventStorage;
     use poker::models::base::{
         GameErrors, Id, GameInitialized, CardDealt, HandCreated, HandResolved, RoundResolved,
-        PlayerJoined, PlayerLeft, GameConcluded,
+        PlayerJoined, PlayerLeft, GameConcluded, RoundStarted,
     };
     use poker::models::card::{Card, CardTrait};
     use poker::models::deck::{Deck, DeckTrait};
@@ -783,6 +783,115 @@ pub mod actions {
             world.write_model(@game);
 
             game.community_cards
+        }
+
+        // @OWK50GA
+        // STEP 1:
+        // Change dealer/select dealer: this is because each round has a new dealer. Remember the
+        // dealer
+        //  choosing algorithm used in this project
+
+        // STEP 2:
+        // Initialize pots to take small blind and big blind. The small blind guy is the one
+        // immediately next to the dealer (left hand), while the big blind guy is next to the small
+        // blind guy
+
+        // STEP 3:
+        // Reset all previous round game variables, including bets and player amounts. Clear round
+        // actions as well so that you can record other actions. Also update the current_bet
+        // (minimum players must call to stay in)
+
+        // STEP 4:
+        // Shuffle, and then deal hole cards. The function is in this contract already
+
+        // STEP 5:
+        // Set player turn, to the player immediately right of the big blind, so that the engine
+        // knows whose turn it is.
+
+        // STEP 6:
+        // Initialize community cards placeholder, and betting counter
+        fn _start_round(ref self: ContractState, game_id: u64, ref players: Array<Player>) {
+            // Load world and game
+            let mut world = self.world_default();
+            let mut game: Game = world.read_model(game_id);
+
+            let next_dealer_opt: Option<Player> = self._get_dealer(players.at(0));
+            assert(next_dealer_opt.is_some(), 'Dealer not found');
+            let next_dealer = next_dealer_opt.unwrap();
+            world.write_model(@next_dealer);
+
+            // Get dealer index, so that you can assign blinds
+            let mut dealer_index = 0;
+            let total_players = players.len();
+            let mut i = 0;
+            while i < total_players {
+                let current_player = players.at(i);
+                if current_player == @next_dealer {
+                    dealer_index = i;
+                    break;
+                }
+                i += 1;
+            };
+
+            // Post blinds now you have dealer index. Player to the left for small blind, right for
+            // big blind.
+            // We are taking 0 to length as left to right, so dealer_index - 1 for small blind,
+            // dealer_index + 1 for big blind
+            let sb_index = (dealer_index - 1) % total_players;
+            let sb_address = players.at(sb_index);
+            let bb_index = (dealer_index + 1) % total_players;
+            let bb_address = players.at(bb_index);
+
+            let mut sb_player: Player = world.read_model(*sb_address);
+            let sb_amount = game.params.small_blind;
+            sb_player.chips = sb_player.chips - sb_amount.into();
+            sb_player.current_bet = sb_amount.into();
+            world.write_model(@sb_player);
+
+            let mut bb_player: Player = world.read_model(*bb_address);
+            let bb_amount = game.params.big_blind;
+            bb_player.chips = bb_player.chips - bb_amount.into();
+            bb_player.current_bet = bb_amount.into();
+            world.write_model(@bb_player);
+
+            game.pot = (sb_amount + bb_amount).into();
+            game.current_bet = bb_amount.into();
+
+            // Reset previous game state
+            game.round_in_progress = true;
+            game.community_cards = array![];
+            // set raises remaining back to the maximum number
+            // set the game actions taken back to 0
+
+            for deck_id in game.deck.span() {
+                let mut deck: Deck = world.read_model(*deck_id);
+                deck.new_deck();
+                deck.shuffle();
+                world.write_model(@deck);
+            };
+
+            // Deal hole cards
+            self._deal_hands(ref players);
+
+            // set player turn
+            let next_player_index = (bb_index + 1) % total_players;
+            let next_player = players.at(next_player_index);
+            game.next_player = Option::Some(*next_player.id);
+            let dealer: Player = world.read_model(dealer_index);
+
+            world.write_model(@game);
+            world
+                .emit_event(
+                    @RoundStarted {
+                        game_id,
+                        dealer: dealer.id,
+                        current_game_bet: bb_amount.into(),
+                        small_blind_player: sb_player.id,
+                        big_blind_player: bb_player.id,
+                        next_player: *next_player.id,
+                        no_of_players: players.len(),
+                    },
+                )
         }
 
         // extracts the winning hands

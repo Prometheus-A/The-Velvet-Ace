@@ -85,6 +85,20 @@ pub struct GameConcluded {
     pub mvp: ContractAddress,
 }
 
+#[derive(Drop, Serde)]
+#[dojo::event]
+pub struct RoundStarted {
+    #[key]
+    pub game_id: u64,
+    #[key]
+    pub dealer: ContractAddress,
+    pub current_game_bet: u256,
+    pub small_blind_player: ContractAddress,
+    pub big_blind_player: ContractAddress,
+    pub next_player: ContractAddress,
+    pub no_of_players: u32,
+}
+
 /// MODEL
 
 #[derive(Serde, Copy, Drop, PartialEq)]

@@ -10,7 +10,7 @@ use poker::traits::player::PlayerTrait;
 
 // FOR NOW, NO PLAYER CAN HAVE MORE THAN ONE HAND.
 // Go to all functions that use player as a parameter, and remove the snapshot
-#[derive(Drop, Serde, Debug, Hash)]
+#[derive(Copy, Drop, Serde, Debug, PartialEq, Hash)]
 #[dojo::model]
 pub struct Player {
     #[key]

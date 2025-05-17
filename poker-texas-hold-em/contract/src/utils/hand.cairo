@@ -3,10 +3,9 @@ use crate::models::card::{Card, Royals};
 
 /// Determines the winning hand(s) among an array of hands with the same HandRank.
 ///
-/// This function compares hands of equal rank using poker tie-breaking rules specific to each
-/// HandRank. It assumes all input hands have the same rank and contain exactly 5 cards.
-/// For ranks like STRAIGHT, STRAIGHT_FLUSH, and ROYAL_FLUSH, where ties are determined solely
-/// by the rank itself, all hands are considered equal if they share the same rank.
+/// This function sorts all hands in descending order based on their strength and returns them,
+/// along with kicker cards determined by poker tie-breaking rules specific to each HandRank.
+/// It assumes all input hands have the same rank and contain exactly 5 cards.
 ///
 /// # Arguments
 /// * `hands` - An array of Hand structs, each with the same HandRank.
@@ -14,215 +13,93 @@ use crate::models::card::{Card, Royals};
 ///
 /// # Returns
 /// A tuple containing:
-/// 1. An `Array<Hand>` of the winning hand(s).
+/// 1. An `Array<Hand>` of all hands sorted in descending order by strength.
 /// 2. An `Array<Card>` of kicker cards:
-///    - If a single hand wins, contains all 5 cards of that hand.
-///    - If multiple hands tie, contains an empty array, indicating no further tie-breaking.
+///    - If the first hand is uniquely the strongest, contains all 5 cards of that hand.
+///    - If multiple hands tie for the strongest, contains an empty array.
 ///
 /// # Panics
 /// Panics if the input `hands` array is empty or if any hand does not have exactly 5 cards.
 //
 // @pope-h
-fn extract_kicker(mut hands: Array<Hand>, hand_rank: u16) -> (Array<Hand>, Array<Card>) {
+fn extract_kicker(hands: Array<Hand>, hand_rank: u16) -> (Array<Hand>, Array<Card>) {
     assert(hands.len() > 0, 'Hands array cannot be empty');
     let rank: HandRank = hand_rank.into();
 
-    match rank {
-        HandRank::HIGH_CARD |
-        HandRank::FLUSH => {
-            let first_hand = hands.at(0); // Snapshot: @Hand
-            assert(first_hand.cards.len() == 5, 'Hand must have 5 cards');
-            let mut max_key = get_high_card_key(first_hand);
-            let mut winning_indices: Array<usize> = array![0];
-
-            for i in 1..hands.len() {
-                let hand = hands.at(i); // Snapshot: @Hand
-                assert(hand.cards.len() == 5, 'Hand must have 5 cards');
-                let key = get_high_card_key(hand);
-                let cmp = compare_arrays(@key, @max_key);
-                if cmp == 1 {
-                    max_key = key;
-                    winning_indices = array![i];
-                } else if cmp == 0 {
-                    winning_indices.append(i);
-                }
-            };
-
-            let mut winning_hands: Array<Hand> = array![];
-            for j in 0..winning_indices.len() {
-                let index = *winning_indices.at(j);
-                winning_hands.append(hands[index].clone());
-            };
-            if winning_hands.len() == 1 {
-                (winning_hands, winning_hands.at(0).cards.clone())
-            } else {
-                (winning_hands, array![])
-            }
-        },
-        HandRank::ONE_PAIR => {
-            let first_hand = hands.at(0);
-            assert(first_hand.cards.len() == 5, 'Hand must have 5 cards');
-            let mut max_key = get_one_pair_key(first_hand);
-            let mut winning_indices: Array<usize> = array![0];
-
-            for i in 1..hands.len() {
-                let hand = hands.at(i);
-                assert(hand.cards.len() == 5, 'Hand must have 5 cards');
-                let key = get_one_pair_key(hand);
-                let cmp = compare_arrays(@key, @max_key);
-                if cmp == 1 {
-                    max_key = key;
-                    winning_indices = array![i];
-                } else if cmp == 0 {
-                    winning_indices.append(i);
-                }
-            };
-
-            let mut winning_hands: Array<Hand> = array![];
-            for j in 0..winning_indices.len() {
-                let index = *winning_indices.at(j);
-                winning_hands.append(hands[index].clone());
-            };
-            if winning_hands.len() == 1 {
-                (winning_hands, winning_hands.at(0).cards.clone())
-            } else {
-                (winning_hands, array![])
-            }
-        },
-        HandRank::TWO_PAIR => {
-            let first_hand = hands.at(0);
-            assert(first_hand.cards.len() == 5, 'Hand must have 5 cards');
-            let mut max_key = get_two_pair_key(first_hand);
-            let mut winning_indices: Array<usize> = array![0];
-
-            for i in 1..hands.len() {
-                let hand = hands.at(i);
-                assert(hand.cards.len() == 5, 'Hand must have 5 cards');
-                let key = get_two_pair_key(hand);
-                let cmp = compare_arrays(@key, @max_key);
-                if cmp == 1 {
-                    max_key = key;
-                    winning_indices = array![i];
-                } else if cmp == 0 {
-                    winning_indices.append(i);
-                }
-            };
-
-            let mut winning_hands: Array<Hand> = array![];
-            for j in 0..winning_indices.len() {
-                let index = *winning_indices.at(j);
-                winning_hands.append(hands[index].clone());
-            };
-            if winning_hands.len() == 1 {
-                (winning_hands, winning_hands.at(0).cards.clone())
-            } else {
-                (winning_hands, array![])
-            }
-        },
-        HandRank::THREE_OF_A_KIND => {
-            let first_hand = hands.at(0);
-            assert(first_hand.cards.len() == 5, 'Hand must have 5 cards');
-            let mut max_key = get_three_of_a_kind_key(first_hand);
-            let mut winning_indices: Array<usize> = array![0];
-
-            for i in 1..hands.len() {
-                let hand = hands.at(i);
-                assert(hand.cards.len() == 5, 'Hand must have 5 cards');
-                let key = get_three_of_a_kind_key(hand);
-                let cmp = compare_arrays(@key, @max_key);
-                if cmp == 1 {
-                    max_key = key;
-                    winning_indices = array![i];
-                } else if cmp == 0 {
-                    winning_indices.append(i);
-                }
-            };
-
-            let mut winning_hands: Array<Hand> = array![];
-            for j in 0..winning_indices.len() {
-                let index = *winning_indices.at(j);
-                winning_hands.append(hands[index].clone());
-            };
-            if winning_hands.len() == 1 {
-                (winning_hands, winning_hands.at(0).cards.clone())
-            } else {
-                (winning_hands, array![])
-            }
-        },
-        HandRank::STRAIGHT | HandRank::STRAIGHT_FLUSH |
-        HandRank::ROYAL_FLUSH => {
-            for i in 0..hands.len() {
-                assert(hands.at(i).cards.len() == 5, 'Hand must have 5 cards');
-            };
-
-            let mut result_hands: Array<Hand> = array![];
-            for j in 0..hands.len() {
-                result_hands.append(hands[j].clone());
-            };
-            (result_hands, array![])
-        },
-        HandRank::FULL_HOUSE => {
-            let first_hand = hands.at(0);
-            assert(first_hand.cards.len() == 5, 'Hand must have 5 cards');
-            let mut max_key = get_full_house_key(first_hand);
-            let mut winning_indices: Array<usize> = array![0];
-
-            for i in 1..hands.len() {
-                let hand = hands.at(i);
-                assert(hand.cards.len() == 5, 'Hand must have 5 cards');
-                let key = get_full_house_key(hand);
-                let cmp = compare_arrays(@key, @max_key);
-                if cmp == 1 {
-                    max_key = key;
-                    winning_indices = array![i];
-                } else if cmp == 0 {
-                    winning_indices.append(i);
-                }
-            };
-
-            let mut winning_hands: Array<Hand> = array![];
-            for j in 0..winning_indices.len() {
-                let index = *winning_indices.at(j);
-                winning_hands.append(hands[index].clone());
-            };
-            if winning_hands.len() == 1 {
-                (winning_hands, winning_hands.at(0).cards.clone())
-            } else {
-                (winning_hands, array![])
-            }
-        },
-        HandRank::FOUR_OF_A_KIND => {
-            let first_hand = hands.at(0);
-            assert(first_hand.cards.len() == 5, 'Hand must have 5 cards');
-            let mut max_key = get_four_of_a_kind_key(first_hand);
-            let mut winning_indices: Array<usize> = array![0];
-
-            for i in 1..hands.len() {
-                let hand = hands.at(i);
-                assert(hand.cards.len() == 5, 'Hand must have 5 cards');
-                let key = get_four_of_a_kind_key(hand);
-                let cmp = compare_arrays(@key, @max_key);
-                if cmp == 1 {
-                    max_key = key;
-                    winning_indices = array![i];
-                } else if cmp == 0 {
-                    winning_indices.append(i);
-                }
-            };
-
-            let mut winning_hands: Array<Hand> = array![];
-            for j in 0..winning_indices.len() {
-                let index = *winning_indices.at(j);
-                winning_hands.append(hands[index].clone());
-            };
-            if winning_hands.len() == 1 {
-                (winning_hands, winning_hands.at(0).cards.clone())
-            } else {
-                (winning_hands, array![])
-            }
-        },
-        HandRank::UNDEFINED => { panic(array!['Undefined hand rank']) },
+    // For STRAIGHT, STRAIGHT_FLUSH, and ROYAL_FLUSH, return all hands with no kicker
+    if rank == HandRank::STRAIGHT
+        || rank == HandRank::STRAIGHT_FLUSH
+        || rank == HandRank::ROYAL_FLUSH {
+        let mut sorted_hands: Array<Hand> = array![];
+        for i in 0..hands.len() {
+            sorted_hands.append(hands.at(i).clone());
+        };
+        return (sorted_hands, array![]);
     }
+
+    let mut keys_and_hands: Array<(Array<u16>, Hand)> = array![];
+    for i in 0..hands.len() {
+        let hand = hands.at(i);
+        assert(hand.cards.len() == 5, 'Hand must have 5 cards');
+        let key = get_key(hand, rank);
+        keys_and_hands.append((key, hand.clone()));
+    };
+
+    let sorted = bubble_sort_keys_and_hands(keys_and_hands);
+    let mut sorted_hands: Array<Hand> = array![];
+    for i in 0..sorted.len() {
+        let (_, hand) = sorted.at(i);
+        sorted_hands.append(hand.clone());
+    };
+
+    let mut kicker: Array<Card> = array![];
+    if sorted_hands.len() == 1 {
+        kicker = sorted_hands.at(0).cards.clone();
+    } else {
+        let key0 = get_key(sorted_hands.at(0), rank);
+        let key1 = get_key(sorted_hands.at(1), rank);
+        if compare_arrays(@key0, @key1) == 1 {
+            kicker = sorted_hands.at(0).cards.clone();
+        }
+    }
+
+    (sorted_hands, kicker)
+}
+
+/// Extracts the comparison key for a hand based on its rank.
+/// @pope-h
+fn get_key(hand: @Hand, rank: HandRank) -> Array<u16> {
+    match rank {
+        HandRank::HIGH_CARD | HandRank::FLUSH => get_high_card_key(hand),
+        HandRank::ONE_PAIR => get_one_pair_key(hand),
+        HandRank::TWO_PAIR => get_two_pair_key(hand),
+        HandRank::THREE_OF_A_KIND => get_three_of_a_kind_key(hand),
+        HandRank::STRAIGHT | HandRank::STRAIGHT_FLUSH |
+        HandRank::ROYAL_FLUSH => get_high_card_key(hand),
+        HandRank::FULL_HOUSE => get_full_house_key(hand),
+        HandRank::FOUR_OF_A_KIND => get_four_of_a_kind_key(hand),
+        HandRank::UNDEFINED => panic(array!['Undefined hand rank']),
+    }
+}
+
+/// Sorts an array of (key, hand) pairs in descending order based on the key.
+/// @pope-h
+fn bubble_sort_keys_and_hands(mut arr: Array<(Array<u16>, Hand)>) -> Array<(Array<u16>, Hand)> {
+    let mut swapped = true;
+    while swapped {
+        swapped = false;
+        for i in 0..arr.len() - 1 {
+            let (key1, _) = arr.at(i);
+            let (key2, _) = arr.at(i + 1);
+            if compare_arrays(key1, key2) == -1 {
+                let temp = arr.at(i).clone();
+                arr = set_array_element(arr.clone(), i, arr.at(i + 1).clone());
+                arr = set_array_element(arr, i + 1, temp);
+                swapped = true;
+            };
+        };
+    };
+    arr
 }
 
 /// @pope-h
@@ -344,32 +221,29 @@ fn bubble_sort_u8(mut arr: Array<u8>) -> Array<u8> {
     let mut swapped = true;
     while swapped {
         swapped = false;
-        let mut i: usize = 0;
-        while i < arr.len() - 1 {
-            let current = *arr.at(i);
-            let next = *arr.at(i + 1);
-            if current < next {
-                arr = set_array_element(arr.clone(), i, next);
-                arr = set_array_element(arr, i + 1, current);
+        for i in 0..arr.len() - 1 {
+            if *arr.at(i) < *arr.at(i + 1) {
+                let temp = *arr.at(i);
+                arr = set_array_element(arr.clone(), i, *arr.at(i + 1));
+                arr = set_array_element(arr, i + 1, temp);
                 swapped = true;
             };
-            i += 1;
         };
     };
     arr
 }
 
 /// @pope-h
-fn set_array_element<T, +Copy<T>, +Drop<T>>(mut arr: Array<T>, index: usize, value: T) -> Array<T> {
+fn set_array_element<T, +Clone<T>, +Drop<T>>(
+    mut arr: Array<T>, index: usize, value: T,
+) -> Array<T> {
     let mut new_arr: Array<T> = array![];
-    let mut i: usize = 0;
-    while i < arr.len() {
+    for i in 0..arr.len() {
         if i == index {
-            new_arr.append(value);
+            new_arr.append(value.clone());
         } else {
-            new_arr.append(*arr.at(i));
+            new_arr.append(arr.at(i).clone());
         };
-        i += 1;
     };
     new_arr
 }
@@ -731,11 +605,10 @@ fn compare_arrays(a: @Array<u16>, b: @Array<u16>) -> felt252 {
 /// [@pope-h]
 fn bit_and(a: u32, b: u32) -> u32 {
     let mut result = 0_u32;
-    let mut position = 0_u32;
     let mut a_copy = a;
     let mut b_copy = b;
 
-    while position < 32 {
+    for position in 0..32_u32 {
         let bit_a = a_copy % 2;
         let bit_b = b_copy % 2;
         if bit_a == 1 && bit_b == 1 {
@@ -743,7 +616,6 @@ fn bit_and(a: u32, b: u32) -> u32 {
         };
         a_copy /= 2;
         b_copy /= 2;
-        position += 1;
     };
     result
 }
@@ -763,10 +635,8 @@ fn bit_and(a: u32, b: u32) -> u32 {
 /// [@pope-h]
 fn pow(base: u32, exp: u32) -> u32 {
     let mut result = 1_u32;
-    let mut i = 0_u32;
-    while i < exp {
+    for _i in 0..exp {
         result *= base;
-        i += 1;
     };
     result
 }

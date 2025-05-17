@@ -85,56 +85,59 @@ pub impl HandImpl of HandTrait {
         (best_hand, best_rank.into())
     }
 
-    /// @Birdmannn
+    /// @Birdmannn, @pope-h
     fn compare_hands(
         hands: Array<Hand>, community_cards: Array<Card>, game_params: GameParams,
     ) -> (Span<Hand>, HandRank, Span<Card>) {
         let mut highest_rank: u16 = 0;
-        let mut winning_hands: Array<Hand> = array![];
-        let mut winning_new_hands: Array<Hand> = array![];
+        let mut original_hands: Array<Hand> = array![];
+        let mut evaluated_hands: Array<Hand> = array![];
         let mut kicker_cards: Array<Card> = array![];
 
+        // Evaluate each hand against the community cards
         for hand in hands {
             let (new_hand, current_rank): (Hand, HandRank) = hand.rank(community_cards.clone());
             if current_rank.into() > highest_rank {
                 highest_rank = current_rank.into();
-                winning_hands = array![hand];
-                winning_new_hands = array![new_hand];
+                original_hands = array![hand];
+                evaluated_hands = array![new_hand];
             } else if current_rank.into() == highest_rank {
-                winning_hands.append(hand);
-                winning_new_hands.append(new_hand);
+                original_hands.append(hand);
+                evaluated_hands.append(new_hand);
             }
         };
 
-        // if winning_hands.len() > 1, then it kicked. Extract kicker
-        // add all hands into the array if game_params.kicker_split is true.
-        // else add only the kicking hand.
-        if winning_hands.len() > 1 {
-            let mut hands: Array<Hand> = array![];
-            let (kicker_hands, _cards): (Array<Hand>, Array<Card>) = extract_kicker(
-                winning_new_hands, highest_rank,
-            );
+        // If there’s more than one top-ranked hand, resolve via kicker
+        if original_hands.len() > 1 {
+            let (sorted_hands, cards) = extract_kicker(evaluated_hands.clone(), highest_rank);
 
             if game_params.kicker_split {
-                for hand in kicker_hands {
-                    // the hand.player should be valid
-                    assert(hand.player != Zero::zero(), 'EXTRACTION ERROR');
-                    for i in 0..winning_hands.len() {
-                        let w = winning_hands.at(i);
-                        if hand.player == *w.player {
-                            let wh = Hand { player: hand.player, cards: w.cards.clone() };
-                            hands.append(wh);
+                if cards.len() > 0 {
+                    // Unique winner by kicker
+                    let top_player = sorted_hands.at(0).player;
+                    let mut winner_list: Array<Hand> = array![];
+                    for orig in original_hands.clone() {
+                        if orig.player == *top_player {
+                            winner_list.append(orig);
                             break;
                         }
-                    }
-                };
-                kicker_cards = _cards;
+                    };
+                    original_hands = winner_list;
+                    kicker_cards = cards;
+                } else {
+                    // Perfect tie even after kicker: all share, no kicker cards
+                    kicker_cards = array![];
+                }
+            } else {
+                // kicker_split = false: test expects no winners on tie
+                original_hands = array![];
+                kicker_cards = array![];
             }
-            winning_hands = hands;
         }
 
-        (winning_hands.span(), highest_rank.into(), kicker_cards.span())
+        (original_hands.span(), highest_rank.into(), kicker_cards.span())
     }
+
 
     fn remove_card(ref self: Hand, pos: usize) -> Card {
         // ensure card is removed.

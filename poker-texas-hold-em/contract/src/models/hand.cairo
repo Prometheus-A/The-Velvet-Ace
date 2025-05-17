@@ -123,19 +123,19 @@ mod tests {
         let player1 = contract_address_const::<'PLAYER1'>();
         let player2 = contract_address_const::<'PLAYER2'>();
 
-        // h1: A♠,K♠,Q♠,J♠,10♠  (ace high)
         let card1 = array![c(14, 0), c(13, 0), c(12, 0), c(11, 0), c(10, 0)];
-        // h2: K♥,Q♥,J♥,10♥,9♥  (king high)
         let card2 = array![c(13, 1), c(12, 1), c(11, 1), c(10, 1), c(9, 1)];
 
         let h1 = mk_hand(player1, card1);
         let h2 = mk_hand(player2, card2);
 
-        let (winners, kicker) = extract_kicker(array![h1.clone(), h2], HandRank::HIGH_CARD.into());
-        assert(winners.len() == 1, 'There should be only 1 winner');
-        assert(winners.at(0).player == @h1.player, 'Wrong winner');
-        // kicker must be the winner’s full 5 cards
-        assert(kicker == h1.cards, 'kicker must be winner cards');
+        let (sorted_hands, kicker) = extract_kicker(
+            array![h1.clone(), h2.clone()], HandRank::HIGH_CARD.into(),
+        );
+        assert(sorted_hands.len() == 2, 'Should return all hands');
+        assert(sorted_hands.at(0).player == @h1.player, 'Strongest hand should be first');
+        assert(sorted_hands.at(1).player == @h2.player, 'Weaker hand should be second');
+        assert(kicker == h1.cards, 'Kicker should be strongest hand');
     }
 
     #[test]
@@ -143,16 +143,15 @@ mod tests {
         let player1 = contract_address_const::<'PLAYER1'>();
         let player2 = contract_address_const::<'PLAYER2'>();
 
-        // both hands identical → tie, no kicker
         let cards = array![c(14, 0), c(10, 1), c(8, 2), c(4, 3), c(2, 0)];
         let h1 = mk_hand(player1, cards.clone());
-        let h2 = mk_hand(player2, cards);
-        let (winners, kicker) = extract_kicker(
+        let h2 = mk_hand(player2, cards.clone());
+
+        let (sorted_hands, kicker) = extract_kicker(
             array![h1.clone(), h2.clone()], HandRank::HIGH_CARD.into(),
         );
-
-        assert(winners.len() == 2, 'Both hands should tie');
-        assert(kicker.len() == 0, 'Tie means no kicker returned');
+        assert(sorted_hands.len() == 2, 'Should return all hands');
+        assert(kicker.len() == 0, 'Tie means no kicker');
     }
 
     #[test]
@@ -160,19 +159,16 @@ mod tests {
         let player1 = contract_address_const::<'PLAYER1'>();
         let player2 = contract_address_const::<'PLAYER2'>();
 
-        // Both have pair of 9s:
-        // h1 kickers = [A, K, 3]
         let h1 = mk_hand(player1, array![c(9, 0), c(9, 1), c(14, 0), c(13, 1), c(3, 2)]);
-        // h2 kickers = [A, Q, 5] → Q < K, so h1 should win
         let h2 = mk_hand(player2, array![c(9, 2), c(9, 3), c(14, 1), c(12, 0), c(5, 1)]);
 
-        let (winners, kicker) = extract_kicker(
+        let (sorted_hands, kicker) = extract_kicker(
             array![h1.clone(), h2.clone()], HandRank::ONE_PAIR.into(),
         );
-
-        assert(winners.len() == 1, 'Only one hand should win');
-        assert(winners.at(0).player == @h1.player, 'Wrong hand won the tie');
-        assert(kicker == h1.cards, 'Winner cards must be returned');
+        assert(sorted_hands.len() == 2, 'Should return all hands');
+        assert(sorted_hands.at(0).player == @h1.player, 'Strongest hand should be first');
+        assert(sorted_hands.at(1).player == @h2.player, 'Weaker hand should be second');
+        assert(kicker == h1.cards, 'Kicker should be strongest hand');
     }
 
     #[test]
@@ -180,15 +176,13 @@ mod tests {
         let player1 = contract_address_const::<'PLAYER1'>();
         let player2 = contract_address_const::<'PLAYER2'>();
 
-        // h1: 10-J-Q-K-A, h2: 9-10-J-Q-K
         let h1 = mk_hand(player1, array![c(10, 0), c(11, 0), c(12, 0), c(13, 0), c(14, 0)]);
         let h2 = mk_hand(player2, array![c(9, 1), c(10, 1), c(11, 1), c(12, 1), c(13, 1)]);
 
-        let (winners, kicker) = extract_kicker(
+        let (sorted_hands, kicker) = extract_kicker(
             array![h1.clone(), h2.clone()], HandRank::STRAIGHT.into(),
         );
-
-        assert(winners.len() == 2, 'All straights should tie');
+        assert(sorted_hands.len() == 2, 'Should return all hands');
         assert(kicker.len() == 0, 'Straights tie, no kicker');
     }
 
@@ -213,17 +207,16 @@ mod tests {
         let p1 = contract_address_const::<'P1'>();
         let p2 = contract_address_const::<'P2'>();
 
-        // p1: K♣ Q♦ J♠ 10♣ 9♦  (King high)
         let h1 = mk_hand(p1, array![c(13, 0), c(12, 1), c(11, 2), c(10, 0), c(9, 1)]);
-        // p2: A♥ 5♣ 4♦ 3♠ 2♣   (Ace high)
         let h2 = mk_hand(p2, array![c(14, 3), c(5, 0), c(4, 1), c(3, 2), c(2, 0)]);
 
-        let (winners, kicker) = extract_kicker(
+        let (sorted_hands, kicker) = extract_kicker(
             array![h1.clone(), h2.clone()], HandRank::HIGH_CARD.into(),
         );
-        assert(winners.len() == 1, 'Expected one winner');
-        assert(winners.at(0).player == @h2.player, 'Ace-high should win');
-        assert(kicker == h2.cards, 'Kicker must be winner cards');
+        assert(sorted_hands.len() == 2, 'Should return all hands');
+        assert(sorted_hands.at(0).player == @h2.player, 'Ace-high should be first');
+        assert(sorted_hands.at(1).player == @h1.player, 'King-high should be second');
+        assert(kicker == h2.cards, 'Kicker should be strongest hand');
     }
 
     #[test]
@@ -231,18 +224,16 @@ mod tests {
         let p1 = contract_address_const::<'P1'>();
         let p2 = contract_address_const::<'P2'>();
 
-        // both Ace high…
-        // p1 second-highest = Q
         let h1 = mk_hand(p1, array![c(14, 0), c(12, 1), c(10, 2), c(8, 0), c(6, 1)]);
-        // p2 second-highest = K
         let h2 = mk_hand(p2, array![c(14, 3), c(13, 1), c(9, 0), c(7, 2), c(5, 3)]);
 
-        let (winners, kicker) = extract_kicker(
+        let (sorted_hands, kicker) = extract_kicker(
             array![h1.clone(), h2.clone()], HandRank::HIGH_CARD.into(),
         );
-        assert(winners.len() == 1, 'Expected one winner');
-        assert(winners.at(0).player == @h2.player, 'Higher second-card should win');
-        assert(kicker == h2.cards, 'Kicker must be winner cards');
+        assert(sorted_hands.len() == 2, 'Should return all hands');
+        assert(sorted_hands.at(0).player == @h2.player, 'Higher 2nd-card should be first');
+        assert(sorted_hands.at(1).player == @h1.player, 'Lower 2nd-card should be second');
+        assert(kicker == h2.cards, 'Kicker should be strongest hand');
     }
 
     #[test]
@@ -255,12 +246,13 @@ mod tests {
         // p2: pair of Tens
         let h2 = mk_hand(p2, array![c(10, 2), c(10, 3), c(14, 0), c(2, 1), c(3, 2)]);
 
-        let (winners, kicker) = extract_kicker(
+        let (sorted_hands, kicker) = extract_kicker(
             array![h1.clone(), h2.clone()], HandRank::ONE_PAIR.into(),
         );
-        assert(winners.len() == 1, 'Higher pair wins');
-        assert(winners.at(0).player == @h1.player, 'Wrong winner on different pairs');
-        assert(kicker == h1.cards, 'Kicker must be winner cards');
+        assert(sorted_hands.len() == 2, 'Should return all hands');
+        assert(sorted_hands.at(0).player == @h1.player, 'Higher pair should be first');
+        assert(sorted_hands.at(1).player == @h2.player, 'Lower pair should be second');
+        assert(kicker == h1.cards, 'Kicker should be strongest hand');
     }
 
     #[test]
@@ -270,139 +262,144 @@ mod tests {
         let cards = array![c(8, 0), c(8, 1), c(14, 0), c(13, 1), c(2, 2)];
 
         let h1 = mk_hand(p1, cards.clone());
-        let h2 = mk_hand(p2, cards);
+        let h2 = mk_hand(p2, cards.clone());
 
-        let (winners, kicker) = extract_kicker(
+        let (sorted_hands, kicker) = extract_kicker(
             array![h1.clone(), h2.clone()], HandRank::ONE_PAIR.into(),
         );
-        assert(winners.len() == 2, 'Identical pairs should tie');
-        assert(kicker.len() == 0, 'Tie, no kicker');
+        assert(sorted_hands.len() == 2, 'Should return all hands');
+        assert(kicker.len() == 0, 'Tie means no kicker');
     }
 
     #[test]
     fn test_two_pair_different_high_pair() {
         let p1 = contract_address_const::<'P1'>();
         let p2 = contract_address_const::<'P2'>();
-        // p1: K-K & 2-2
+
         let h1 = mk_hand(p1, array![c(13, 0), c(13, 1), c(2, 0), c(2, 1), c(9, 2)]);
-        // p2: Q-Q & J-J
         let h2 = mk_hand(p2, array![c(12, 2), c(12, 3), c(11, 0), c(11, 1), c(8, 2)]);
 
-        let (winners, kicker) = extract_kicker(
+        let (sorted_hands, kicker) = extract_kicker(
             array![h1.clone(), h2.clone()], HandRank::TWO_PAIR.into(),
         );
-        assert(winners.len() == 1, 'Higher top pair wins');
-        assert(winners.at(0).player == @h1.player, 'Wrong winner on two-pair');
-        assert(kicker == h1.cards, 'Kicker must be winner cards');
+        assert(sorted_hands.len() == 2, 'Should return all hands');
+        assert(sorted_hands.at(0).player == @h1.player, 'Higher top pair should be first');
+        assert(sorted_hands.at(1).player == @h2.player, 'Lower top pair should be second');
+        assert(kicker == h1.cards, 'Kicker should be strongest hand');
     }
 
     #[test]
     fn test_two_pair_same_pairs_different_kicker() {
         let p1 = contract_address_const::<'P1'>();
         let p2 = contract_address_const::<'P2'>();
-        // both K-K & Q-Q…
-        // p1 kicker = 10, p2 kicker = J
+
         let h1 = mk_hand(p1, array![c(13, 0), c(13, 1), c(12, 0), c(12, 1), c(10, 2)]);
         let h2 = mk_hand(p2, array![c(13, 2), c(13, 3), c(12, 2), c(12, 3), c(11, 0)]);
 
-        let (winners, kicker) = extract_kicker(
+        let (sorted_hands, kicker) = extract_kicker(
             array![h1.clone(), h2.clone()], HandRank::TWO_PAIR.into(),
         );
-        assert(winners.len() == 1, 'Higher kicker wins');
-        assert(winners.at(0).player == @h2.player, 'Wrong winner on two-pair kicker');
-        assert(kicker == h2.cards, 'Kicker must be winner cards');
+        assert(sorted_hands.len() == 2, 'Should return all hands');
+        assert(sorted_hands.at(0).player == @h2.player, 'Higher kicker should be first');
+        assert(sorted_hands.at(1).player == @h1.player, 'Lower kicker should be second');
+        assert(kicker == h2.cards, 'Kicker should be strongest hand');
     }
 
     #[test]
     fn test_three_of_a_kind_different_three() {
         let p1 = contract_address_const::<'P1'>();
         let p2 = contract_address_const::<'P2'>();
-        // p1: three 9s, p2: three 8s
+
         let h1 = mk_hand(p1, array![c(9, 0), c(9, 1), c(9, 2), c(5, 0), c(4, 1)]);
         let h2 = mk_hand(p2, array![c(8, 0), c(8, 1), c(8, 2), c(14, 0), c(2, 1)]);
 
-        let (winners, kicker) = extract_kicker(
+        let (sorted_hands, kicker) = extract_kicker(
             array![h1.clone(), h2.clone()], HandRank::THREE_OF_A_KIND.into(),
         );
-        assert(winners.len() == 1, 'Higher three-of-kind wins');
-        assert(winners.at(0).player == @h1.player, 'Wrong winner on three-of-a-kind');
-        assert(kicker == h1.cards, 'Kicker must be winner cards');
+        assert(sorted_hands.len() == 2, 'Should return all hands');
+        assert(sorted_hands.at(0).player == @h1.player, 'Higher three should be first');
+        assert(sorted_hands.at(1).player == @h2.player, 'Lower three should be second');
+        assert(kicker == h1.cards, 'Kicker should be strongest hand');
     }
 
     #[test]
     fn test_flush_different_high() {
         let p1 = contract_address_const::<'P1'>();
         let p2 = contract_address_const::<'P2'>();
-        // p1 flush hearts: A,J,9,7,3 → Ace highest
+
         let h1 = mk_hand(p1, array![c(14, 1), c(11, 1), c(9, 1), c(7, 1), c(3, 1)]);
-        // p2 flush clubs: K,Q,10,8,2 → King highest
         let h2 = mk_hand(p2, array![c(13, 2), c(12, 2), c(10, 2), c(8, 2), c(2, 2)]);
 
-        let (winners, kicker) = extract_kicker(
+        let (sorted_hands, kicker) = extract_kicker(
             array![h1.clone(), h2.clone()], HandRank::FLUSH.into(),
         );
-        assert(winners.len() == 1, 'Higher flush wins');
-        assert(winners.at(0).player == @h1.player, 'Wrong winner on flush');
-        assert(kicker == h1.cards, 'Kicker must be winner cards');
+        assert(sorted_hands.len() == 2, 'Should return all hands');
+        assert(sorted_hands.at(0).player == @h1.player, 'Higher flush should be first');
+        assert(sorted_hands.at(1).player == @h2.player, 'Lower flush should be second');
+        assert(kicker == h1.cards, 'Kicker should be strongest hand');
     }
 
     #[test]
     fn test_full_house_different_three() {
         let p1 = contract_address_const::<'P1'>();
         let p2 = contract_address_const::<'P2'>();
-        // p1: 3×A + 2×K, p2: 3×K + 2×Q
+
         let h1 = mk_hand(p1, array![c(14, 0), c(14, 1), c(14, 2), c(13, 0), c(13, 1)]);
         let h2 = mk_hand(p2, array![c(13, 2), c(13, 3), c(13, 1), c(12, 0), c(12, 1)]);
 
-        let (winners, kicker) = extract_kicker(
+        let (sorted_hands, kicker) = extract_kicker(
             array![h1.clone(), h2.clone()], HandRank::FULL_HOUSE.into(),
         );
-        assert(winners.len() == 1, 'Higher triple wins');
-        assert(winners.at(0).player == @h1.player, 'Wrong winner on full house');
-        assert(kicker == h1.cards, 'Kicker must be winner cards');
+        assert(sorted_hands.len() == 2, 'Should return all hands');
+        assert(sorted_hands.at(0).player == @h1.player, 'Higher triple should be first');
+        assert(sorted_hands.at(1).player == @h2.player, 'Lower triple should be second');
+        assert(kicker == h1.cards, 'Kicker should be strongest hand');
     }
 
     #[test]
     fn test_four_of_a_kind_different_four() {
         let p1 = contract_address_const::<'P1'>();
         let p2 = contract_address_const::<'P2'>();
-        // p1: four 7s, p2: four 6s
+
         let h1 = mk_hand(p1, array![c(7, 0), c(7, 1), c(7, 2), c(7, 3), c(14, 0)]);
         let h2 = mk_hand(p2, array![c(6, 0), c(6, 1), c(6, 2), c(6, 3), c(13, 0)]);
 
-        let (winners, kicker) = extract_kicker(
+        let (sorted_hands, kicker) = extract_kicker(
             array![h1.clone(), h2.clone()], HandRank::FOUR_OF_A_KIND.into(),
         );
-        assert(winners.len() == 1, 'Higher four-of-a-kind wins');
-        assert(winners.at(0).player == @h1.player, 'Wrong winner on four-of-a-kind');
-        assert(kicker == h1.cards, 'Kicker must be winner cards');
+        assert(sorted_hands.len() == 2, 'Should return all hands');
+        assert(sorted_hands.at(0).player == @h1.player, 'Higher four should be first');
+        assert(sorted_hands.at(1).player == @h2.player, 'Lower four should be second');
+        assert(kicker == h1.cards, 'Kicker should be strongest hand');
     }
 
     #[test]
     fn test_straight_flush_tie() {
         let p1 = contract_address_const::<'P1'>();
         let p2 = contract_address_const::<'P2'>();
+
         let h1 = mk_hand(p1, array![c(5, 0), c(6, 0), c(7, 0), c(8, 0), c(9, 0)]);
         let h2 = mk_hand(p2, array![c(2, 1), c(3, 1), c(4, 1), c(5, 1), c(6, 1)]);
 
-        let (winners, kicker) = extract_kicker(
+        let (sorted_hands, kicker) = extract_kicker(
             array![h1.clone(), h2.clone()], HandRank::STRAIGHT_FLUSH.into(),
         );
-        assert(winners.len() == 2, 'All straight-flush hands tie');
-        assert(kicker.len() == 0, 'Tie, no kicker');
+        assert(sorted_hands.len() == 2, 'Should return all hands');
+        assert(kicker.len() == 0, 'Straight flushes tie, no kicker');
     }
 
     #[test]
     fn test_royal_flush_tie() {
         let p1 = contract_address_const::<'P1'>();
         let p2 = contract_address_const::<'P2'>();
+
         let h1 = mk_hand(p1, array![c(10, 2), c(11, 2), c(12, 2), c(13, 2), c(14, 2)]);
         let h2 = mk_hand(p2, array![c(10, 1), c(11, 1), c(12, 1), c(13, 1), c(14, 1)]);
 
-        let (winners, kicker) = extract_kicker(
+        let (sorted_hands, kicker) = extract_kicker(
             array![h1.clone(), h2.clone()], HandRank::ROYAL_FLUSH.into(),
         );
-        assert(winners.len() == 2, 'All royal-flush hands tie');
-        assert(kicker.len() == 0, 'Tie, no kicker');
+        assert(sorted_hands.len() == 2, 'Should return all hands');
+        assert(kicker.len() == 0, 'Royal flushes tie, no kicker');
     }
 }

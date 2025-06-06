@@ -56,4 +56,5 @@ trait IActions<TContractState> {
     fn get_player(self: @TContractState, player_id: ContractAddress) -> Player;
     fn get_game(self: @TContractState, game_id: u64) -> Game;
     fn set_alias(self: @TContractState, alias: felt252);
+    fn resolve_round(ref self: TContractState, game_id: u64);
 }

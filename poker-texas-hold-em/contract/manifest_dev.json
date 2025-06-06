@@ -1,9 +1,9 @@
 {
   "world": {
-    "class_hash": "0x45575a88cc5cef1e444c77ce60b7b4c9e73a01cbbe20926d5a4c72a94011410",
-    "address": "0x525177c8afe8680d7ad1da30ca183e482cfcd6404c1e09d83fd3fa2994fd4b8",
+    "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
+    "address": "0x7cb912d0029e3799c4b8f2253b21481b2ec814c5daf72de75164ca82e7c42a5",
     "seed": "dojo_starter",
-    "name": "Dojo starter",
+    "name": "poker",
     "entrypoints": [
       "uuid",
       "set_metadata",
@@ -11,6 +11,7 @@
       "register_event",
       "register_model",
       "register_contract",
+      "register_library",
       "init_contract",
       "upgrade_event",
       "upgrade_model",
@@ -78,6 +79,10 @@
           {
             "name": "Unregistered",
             "type": "()"
+          },
+          {
+            "name": "Library",
+            "type": "(core::starknet::class_hash::ClassHash, core::felt252)"
           }
         ]
       },
@@ -358,6 +363,34 @@
             "outputs": [
               {
                 "type": "core::starknet::contract_address::ContractAddress"
+              }
+            ],
+            "state_mutability": "external"
+          },
+          {
+            "type": "function",
+            "name": "register_library",
+            "inputs": [
+              {
+                "name": "namespace",
+                "type": "core::byte_array::ByteArray"
+              },
+              {
+                "name": "class_hash",
+                "type": "core::starknet::class_hash::ClassHash"
+              },
+              {
+                "name": "name",
+                "type": "core::byte_array::ByteArray"
+              },
+              {
+                "name": "version",
+                "type": "core::byte_array::ByteArray"
+              }
+            ],
+            "outputs": [
+              {
+                "type": "core::starknet::class_hash::ClassHash"
               }
             ],
             "state_mutability": "external"
@@ -657,6 +690,22 @@
             ],
             "outputs": [],
             "state_mutability": "external"
+          },
+          {
+            "type": "function",
+            "name": "owners_count",
+            "inputs": [
+              {
+                "name": "resource",
+                "type": "core::felt252"
+              }
+            ],
+            "outputs": [
+              {
+                "type": "core::integer::u64"
+              }
+            ],
+            "state_mutability": "view"
           },
           {
             "type": "function",
@@ -967,6 +1016,28 @@
       },
       {
         "type": "event",
+        "name": "dojo::world::world_contract::world::LibraryRegistered",
+        "kind": "struct",
+        "members": [
+          {
+            "name": "name",
+            "type": "core::byte_array::ByteArray",
+            "kind": "key"
+          },
+          {
+            "name": "namespace",
+            "type": "core::byte_array::ByteArray",
+            "kind": "key"
+          },
+          {
+            "name": "class_hash",
+            "type": "core::starknet::class_hash::ClassHash",
+            "kind": "data"
+          }
+        ]
+      },
+      {
+        "type": "event",
         "name": "dojo::world::world_contract::world::EventEmitted",
         "kind": "struct",
         "members": [
@@ -1207,6 +1278,11 @@
             "kind": "nested"
           },
           {
+            "name": "LibraryRegistered",
+            "type": "dojo::world::world_contract::world::LibraryRegistered",
+            "kind": "nested"
+          },
+          {
             "name": "EventEmitted",
             "type": "dojo::world::world_contract::world::EventEmitted",
             "kind": "nested"
@@ -1252,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x2115aaa49adb5178478e04d8707ab7fe361aa9e140866b7365c3bb1f1d93334",
-      "class_hash": "0x6cbb5ab40ad7b48dff70edeacc4902a9eeae63a9e36456f9f908aedb904fbd2",
+      "address": "0xe234d63a9e7355bf8ff01d33111ac2852ecc38c6ae7ef00d35d0cd13979a5e",
+      "class_hash": "0x278b4daf7276e34f64ff62fae31b382f914aa83a3ca63f6086bed9579bcd566",
       "abi": [
         {
           "type": "impl",
@@ -1308,52 +1384,521 @@
         {
           "type": "impl",
           "name": "ActionsImpl",
-          "interface_name": "dojo_starter::systems::actions::IActions"
+          "interface_name": "poker::systems::interface::IActions"
         },
         {
           "type": "enum",
-          "name": "dojo_starter::models::Direction",
+          "name": "core::bool",
           "variants": [
             {
-              "name": "Left",
+              "name": "False",
               "type": "()"
             },
             {
-              "name": "Right",
-              "type": "()"
-            },
-            {
-              "name": "Up",
-              "type": "()"
-            },
-            {
-              "name": "Down",
+              "name": "True",
               "type": "()"
             }
           ]
         },
         {
+          "type": "enum",
+          "name": "poker::models::game::GameMode",
+          "variants": [
+            {
+              "name": "CashGame",
+              "type": "()"
+            },
+            {
+              "name": "Tournament",
+              "type": "core::bool"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "core::option::Option::<core::starknet::contract_address::ContractAddress>",
+          "variants": [
+            {
+              "name": "Some",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "None",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::integer::u256",
+          "members": [
+            {
+              "name": "low",
+              "type": "core::integer::u128"
+            },
+            {
+              "name": "high",
+              "type": "core::integer::u128"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "poker::models::game::GameParams",
+          "members": [
+            {
+              "name": "game_mode",
+              "type": "poker::models::game::GameMode"
+            },
+            {
+              "name": "ownable",
+              "type": "core::option::Option::<core::starknet::contract_address::ContractAddress>"
+            },
+            {
+              "name": "max_no_of_players",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "small_blind",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "big_blind",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "no_of_decks",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "kicker_split",
+              "type": "core::bool"
+            },
+            {
+              "name": "min_amount_of_chips",
+              "type": "core::integer::u256"
+            },
+            {
+              "name": "blind_spacing",
+              "type": "core::integer::u16"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "core::option::Option::<poker::models::game::GameParams>",
+          "variants": [
+            {
+              "name": "Some",
+              "type": "poker::models::game::GameParams"
+            },
+            {
+              "name": "None",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "poker::models::player::Player",
+          "members": [
+            {
+              "name": "id",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "alias",
+              "type": "core::felt252"
+            },
+            {
+              "name": "chips",
+              "type": "core::integer::u256"
+            },
+            {
+              "name": "current_bet",
+              "type": "core::integer::u256"
+            },
+            {
+              "name": "total_rounds",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "locked",
+              "type": "(core::bool, core::integer::u64)"
+            },
+            {
+              "name": "is_dealer",
+              "type": "core::bool"
+            },
+            {
+              "name": "in_round",
+              "type": "core::bool"
+            },
+            {
+              "name": "out",
+              "type": "(core::integer::u64, core::integer::u64)"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "core::option::Option::<poker::models::player::Player>",
+          "variants": [
+            {
+              "name": "Some",
+              "type": "poker::models::player::Player"
+            },
+            {
+              "name": "None",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "poker::models::card::Card",
+          "members": [
+            {
+              "name": "suit",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "value",
+              "type": "core::integer::u16"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "poker::models::hand::Hand",
+          "members": [
+            {
+              "name": "player",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "cards",
+              "type": "core::array::Array::<poker::models::card::Card>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "poker::models::deck::Deck",
+          "members": [
+            {
+              "name": "id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "cards",
+              "type": "core::array::Array::<poker::models::card::Card>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "poker::models::game::Game",
+          "members": [
+            {
+              "name": "id",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "in_progress",
+              "type": "core::bool"
+            },
+            {
+              "name": "round_in_progress",
+              "type": "core::bool"
+            },
+            {
+              "name": "has_ended",
+              "type": "core::bool"
+            },
+            {
+              "name": "current_round",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "should_end",
+              "type": "core::bool"
+            },
+            {
+              "name": "current_player_count",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "players",
+              "type": "core::array::Array::<core::starknet::contract_address::ContractAddress>"
+            },
+            {
+              "name": "deck",
+              "type": "core::array::Array::<core::integer::u64>"
+            },
+            {
+              "name": "next_player",
+              "type": "core::option::Option::<core::starknet::contract_address::ContractAddress>"
+            },
+            {
+              "name": "community_cards",
+              "type": "core::array::Array::<poker::models::card::Card>"
+            },
+            {
+              "name": "pot",
+              "type": "core::integer::u256"
+            },
+            {
+              "name": "current_bet",
+              "type": "core::integer::u256"
+            },
+            {
+              "name": "params",
+              "type": "poker::models::game::GameParams"
+            },
+            {
+              "name": "reshuffled",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "deck_root",
+              "type": "core::felt252"
+            },
+            {
+              "name": "dealt_cards_root",
+              "type": "core::felt252"
+            }
+          ]
+        },
+        {
           "type": "interface",
-          "name": "dojo_starter::systems::actions::IActions",
+          "name": "poker::systems::interface::IActions",
           "items": [
             {
               "type": "function",
-              "name": "spawn",
+              "name": "initialize_game",
+              "inputs": [
+                {
+                  "name": "game_params",
+                  "type": "core::option::Option::<poker::models::game::GameParams>"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "core::integer::u64"
+                }
+              ],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "join_game",
+              "inputs": [
+                {
+                  "name": "game_id",
+                  "type": "core::integer::u64"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "leave_game",
               "inputs": [],
               "outputs": [],
               "state_mutability": "external"
             },
             {
               "type": "function",
-              "name": "move",
+              "name": "end_game",
               "inputs": [
                 {
-                  "name": "direction",
-                  "type": "dojo_starter::models::Direction"
+                  "name": "game_id",
+                  "type": "core::integer::u64"
+                },
+                {
+                  "name": "force",
+                  "type": "core::bool"
                 }
               ],
               "outputs": [],
               "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "check",
+              "inputs": [],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "call",
+              "inputs": [],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "fold",
+              "inputs": [],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "raise",
+              "inputs": [
+                {
+                  "name": "no_of_chips",
+                  "type": "core::integer::u256"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "all_in",
+              "inputs": [],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "buy_in",
+              "inputs": [
+                {
+                  "name": "no_of_chips",
+                  "type": "core::integer::u256"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "get_dealer",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::option::Option::<poker::models::player::Player>"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "get_rank",
+              "inputs": [
+                {
+                  "name": "player_id",
+                  "type": "core::starknet::contract_address::ContractAddress"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "core::byte_array::ByteArray"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "deal_community_card",
+              "inputs": [
+                {
+                  "name": "card",
+                  "type": "poker::models::card::Card"
+                },
+                {
+                  "name": "game_id",
+                  "type": "core::integer::u256"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "showdown",
+              "inputs": [
+                {
+                  "name": "game_id",
+                  "type": "core::integer::u64"
+                },
+                {
+                  "name": "hands",
+                  "type": "core::array::Array::<poker::models::hand::Hand>"
+                },
+                {
+                  "name": "game_proofs",
+                  "type": "core::array::Array::<core::array::Array::<core::felt252>>"
+                },
+                {
+                  "name": "dealt_card_proofs",
+                  "type": "core::array::Array::<core::array::Array::<core::felt252>>"
+                },
+                {
+                  "name": "deck",
+                  "type": "poker::models::deck::Deck"
+                },
+                {
+                  "name": "game_salt",
+                  "type": "core::array::Array::<core::felt252>"
+                },
+                {
+                  "name": "dealt_card_salt",
+                  "type": "core::array::Array::<core::felt252>"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "get_player",
+              "inputs": [
+                {
+                  "name": "player_id",
+                  "type": "core::starknet::contract_address::ContractAddress"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "poker::models::player::Player"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "get_game",
+              "inputs": [
+                {
+                  "name": "game_id",
+                  "type": "core::integer::u64"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "poker::models::game::Game"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "set_alias",
+              "inputs": [
+                {
+                  "name": "alias",
+                  "type": "core::felt252"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "view"
             }
           ]
         },
@@ -1456,7 +2001,7 @@
         },
         {
           "type": "event",
-          "name": "dojo_starter::systems::actions::actions::Event",
+          "name": "poker::systems::actions::actions::Event",
           "kind": "enum",
           "variants": [
             {
@@ -1473,41 +2018,125 @@
         }
       ],
       "init_calldata": [],
-      "tag": "dojo_starter-actions",
-      "selector": "0x7a1c71029f2d0b38e3ac89b09931d08b6e48417e079c289ff19a8698d0cba33",
+      "tag": "poker-actions",
+      "selector": "0x18a5e109b4eff7e5016e3c994ed4d56a2298623a259f9166d561693ca566954",
       "systems": [
-        "spawn",
-        "move",
+        "initialize_game",
+        "join_game",
+        "leave_game",
+        "end_game",
+        "check",
+        "call",
+        "fold",
+        "raise",
+        "all_in",
+        "buy_in",
+        "deal_community_card",
+        "showdown",
         "upgrade"
       ]
     }
   ],
+  "libraries": [],
   "models": [
     {
       "members": [],
-      "class_hash": "0x3f52c6cf17db224f4e7f88629adf7e907ff110baa0616c7e8ef17c5aecf1b1b",
-      "tag": "dojo_starter-DirectionsAvailable",
-      "selector": "0x77844f1facb51e60e546a9832d56c6bd04fa23be4fd5b57290caae5e9a3c1e4"
+      "class_hash": "0x3e655a55c3ba460805cd74c8855577d46448717f6fc3922e98c7bf3e73ca69e",
+      "tag": "poker-Deck",
+      "selector": "0x209e4ddc411e5c5cce215534cbf70075c71caa562ffc3ad3b67d4fda596ebae"
     },
     {
       "members": [],
-      "class_hash": "0x5f79e21312b142fc289d3bd1e0f4c65ac3c4e532252c6fb1ad48b718d892dc",
-      "tag": "dojo_starter-Moves",
-      "selector": "0x2a29373f1af8348bd366a990eb3a342ef2cbe5e85160539eaca3441a673f468"
+      "class_hash": "0x1c735a723d00ab67ab7b0e881b76423e8c10452af8963b9f77058618cc0ed8f",
+      "tag": "poker-Game",
+      "selector": "0xbddf086bdd1bf4d2855c8c08bc5a43f8466805538c785a0722d6d2eaff6348"
     },
     {
       "members": [],
-      "class_hash": "0x2283c68ecba5c60bbbbd3b00659808a02244468e41a1d2cdba1312d65b83594",
-      "tag": "dojo_starter-Position",
-      "selector": "0x2ac8b4c190f7031b9fc44312e6b047a1dce0b3f2957c33a935ca7846a46dd5b"
+      "class_hash": "0x122272ae05e2b53263102cc8865a07d6cfd8d29d30d9f1315ca598672483d6",
+      "tag": "poker-GameStats",
+      "selector": "0x442f8885e10b4e713601e638aeb357aec9cc28c8b0fd16bf85b51da371268a7"
+    },
+    {
+      "members": [],
+      "class_hash": "0x2d0984c6941586c33ff0679f55a800713c62171cfb32252e398825483bdb9f4",
+      "tag": "poker-Hand",
+      "selector": "0x14cf5bdbcffe2c2344ccf127b0cbcaee256d90644c2a58eda967dd555199003"
+    },
+    {
+      "members": [],
+      "class_hash": "0x2b1179d554967edce7a1ef0c8488a04ec8bc876b3a390b3bb9ba88a2912b9d9",
+      "tag": "poker-Id",
+      "selector": "0x16ad19dd7206da28a1a35dba8ecd65afd67b5ae22f5dc1a980f58ee962c125c"
+    },
+    {
+      "members": [],
+      "class_hash": "0x100bb302ec49c9386205c7878f54a058172cb68bf9dbe7763f8fe2d3df3f3a0",
+      "tag": "poker-Player",
+      "selector": "0x3d1174597726c94a260c4c2567a8207bb2b02880dbd26e6ea25fad0e26eeef4"
+    },
+    {
+      "members": [],
+      "class_hash": "0x1866b48b82b394d36d87c118c133a5a0ff002453aabec6b8d806fc2880ac6dd",
+      "tag": "poker-Salts",
+      "selector": "0x76b6de3b5085b6dc2a029415b3916fef5c8000f5247405cb8fa2996d62b1652"
     }
   ],
   "events": [
     {
       "members": [],
-      "class_hash": "0x3dca5564f84050b20e66a2e5e7619201502d241b223ea73cfc05f29e6e20ea1",
-      "tag": "dojo_starter-Moved",
-      "selector": "0x504403e5c02b6442527721fc464d9ea5fc8f1ee600ab5ccd5c0845d36fd45f1"
+      "class_hash": "0x4fcfd456175c3a08d881e32bd35b26ece307e54e3d9d4e680f4add922e6e44b",
+      "tag": "poker-CardDealt",
+      "selector": "0x4d8093eebeb0878f3cbf110c530b4e9b1ef03d1b6bda97703423add9c7b6a91"
+    },
+    {
+      "members": [],
+      "class_hash": "0x7f3e4a56c5161a53cb0223cfdf086e09beda2d964e462d3d3e2f23bbd76c5c",
+      "tag": "poker-GameConcluded",
+      "selector": "0x4fa1cacb2ef42c0b78621e1173b5194a8c76b0c45f34375fc0391d56ec3e9d1"
+    },
+    {
+      "members": [],
+      "class_hash": "0x1068a6c22c2c4b389dc5cc7dc57aa3f1be1405076a548036fb4313fa87e8dd6",
+      "tag": "poker-GameInitialized",
+      "selector": "0x4604f8424fff7fa6cf0b20619095b8c18dfb1921a2811c7cdf9992c86b08adb"
+    },
+    {
+      "members": [],
+      "class_hash": "0x456f642d96510c63f4ca31c8b46b976fc42b02e29d75ebcde6e661761765a96",
+      "tag": "poker-HandCreated",
+      "selector": "0x45525ffc8f94579f62e9ae95d2979d1b00c708a245c7db84f781171cf336544"
+    },
+    {
+      "members": [],
+      "class_hash": "0x753b49b86b4aafbf4292248927e87d9cfac462eb76338b13dab97b48800dcb2",
+      "tag": "poker-HandResolved",
+      "selector": "0x1732cfe89c5f9b7ce1b9bdf738952cc4d75b7ebf74f245e84cae9c63bb26140"
+    },
+    {
+      "members": [],
+      "class_hash": "0x7e776a620116ea63344a6fad78690394b4a5be6f2874fd3a2f4193a7f0cbcf9",
+      "tag": "poker-PlayerJoined",
+      "selector": "0x7647748bccfd74a1204a5fc2d004300194806fa35adfe1c496c01a98bb94e40"
+    },
+    {
+      "members": [],
+      "class_hash": "0x5eaee694c858cdc3312741afc4d0d95cd5885443b09dcb02d0c4212e6cb645e",
+      "tag": "poker-PlayerLeft",
+      "selector": "0x5a6adc73f7e8705be0030f7d0604a4de776e9b7b38caa3d9772abaf6e590c32"
+    },
+    {
+      "members": [],
+      "class_hash": "0x5773c6126e5f51b4f9107bd7b899e097adf89b7b5bcddfd38156b5a40152ad6",
+      "tag": "poker-RoundResolved",
+      "selector": "0x2cd35dbc7952fe47b0081781c5e115443494bbe5c2e2b4f498d2d7fae622c74"
+    },
+    {
+      "members": [],
+      "class_hash": "0x1e97594960b359a489b02a8fc9aae7bcc4a8e04fc2074a54b8ce14f9fa449f3",
+      "tag": "poker-RoundStarted",
+      "selector": "0x406ebc7269bc9875b9da775403625dd5bd013d1c141db666df8ee1657789cd7"
     }
-  ]
+  ],
+  "external_contracts": []
 }

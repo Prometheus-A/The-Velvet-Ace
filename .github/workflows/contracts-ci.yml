@@ -2,19 +2,19 @@ name: Contracts CI
 
 on:
   push:
-    branches: 
+    branches:
       - main
-      - '**'
+      - "**"
     paths:
-      - '**'
-      - '**'
+      - "**"
+      - "**"
   pull_request:
-    branches: 
+    branches:
       - main
-      - '**'
+      - "**"
     paths:
-      - '**'
-      - '**'
+      - "**"
+      - "**"
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -34,14 +34,14 @@ jobs:
       - name: Install plugins
         run: |
           asdf plugin add scarb
-          asdf install scarb 2.9.2
-          asdf global scarb 2.9.2
+          asdf install scarb 2.10.1
+          asdf global scarb 2.10.1
           asdf plugin add dojo https://github.com/dojoengine/asdf-dojo
-          asdf install dojo 1.1.0 
-          asdf global dojo 1.1.0
+          asdf install dojo 1.5.1 
+          asdf global dojo 1.5.1
           asdf plugin add starknet-foundry
-          asdf install starknet-foundry 0.35.0
-          asdf global starknet-foundry 0.35.0
+          asdf install starknet-foundry 0.36.0
+          asdf global starknet-foundry 0.36.0
 
       - name: Build contracts
         run: |

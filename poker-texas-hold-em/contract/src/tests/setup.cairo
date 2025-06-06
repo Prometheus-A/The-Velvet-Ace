@@ -101,6 +101,7 @@ mod setup {
             TestResource::Event(e_HandCreated::TEST_CLASS_HASH),
             TestResource::Event(e_HandResolved::TEST_CLASS_HASH),
             TestResource::Event(e_PlayerJoined::TEST_CLASS_HASH),
+            TestResource::Event(e_RoundResolved::TEST_CLASS_HASH),
         ]
     }
 }

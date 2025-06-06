@@ -3,8 +3,8 @@ version = 1
 
 [[package]]
 name = "dojo"
-version = "1.1.0"
-source = "git+https://github.com/dojoengine/dojo?tag=v1.1.0#dd7e42d92ecd5cf59354a34c5dbe6f9d6e20ed0e"
+version = "1.5.1"
+source = "git+https://github.com/dojoengine/dojo?tag=v1.5.1#986c3b0c6d647b23847c70ddceb1d33ddac86ead"
 dependencies = [
  "dojo_plugin",
 ]
@@ -12,15 +12,15 @@ dependencies = [
 [[package]]
 name = "dojo_cairo_test"
 version = "1.0.12"
-source = "git+https://github.com/dojoengine/dojo?tag=v1.1.0#dd7e42d92ecd5cf59354a34c5dbe6f9d6e20ed0e"
+source = "git+https://github.com/dojoengine/dojo?tag=v1.5.1#986c3b0c6d647b23847c70ddceb1d33ddac86ead"
 dependencies = [
  "dojo",
 ]
 
 [[package]]
 name = "dojo_plugin"
-version = "2.9.2"
-source = "git+https://github.com/dojoengine/dojo?tag=v1.1.0#dd7e42d92ecd5cf59354a34c5dbe6f9d6e20ed0e"
+version = "2.10.1"
+source = "git+https://github.com/dojoengine/dojo?tag=v1.5.1#986c3b0c6d647b23847c70ddceb1d33ddac86ead"
 
 [[package]]
 name = "poker"

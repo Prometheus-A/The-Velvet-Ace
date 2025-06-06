@@ -33,4 +33,5 @@ mod tests {
     mod test_hand_compare;
     mod test_hand_rank;
     mod test_world;
+    mod test_resolve_round;
 }

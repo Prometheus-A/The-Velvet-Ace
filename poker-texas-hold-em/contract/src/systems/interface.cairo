@@ -57,4 +57,19 @@ trait IActions<TContractState> {
     fn get_game(self: @TContractState, game_id: u64) -> Game;
     fn set_alias(self: @TContractState, alias: felt252);
     fn resolve_round(ref self: TContractState, game_id: u64);
+
+    /// Submits a player's cards with proofs for verification
+    ///
+    /// # Arguments
+    /// * `cards` - Array of cards being submitted by the player
+    /// * `deck_proof` - Merkle proof for the deck state
+    /// * `dealt_cards_proof` - Merkle proof for the dealt cards state
+    /// * `staked_amount` - Amount of chips staked for this submission
+    fn submit_card(
+        ref self: TContractState,
+        cards: Array<Card>,
+        deck_proof: Array<felt252>,
+        dealt_cards_proof: Array<felt252>,
+        staked_amount: u256,
+    );
 }

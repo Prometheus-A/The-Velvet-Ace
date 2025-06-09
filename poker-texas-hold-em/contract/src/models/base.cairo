@@ -110,6 +110,19 @@ pub struct Id {
     pub nonce: u64,
 }
 
+/// Model to track card submissions for each round
+/// This helps determine when all players have submitted their cards
+#[derive(Serde, Copy, Drop, PartialEq)]
+#[dojo::model]
+pub struct RoundSubmissions {
+    #[key]
+    pub game_id: u64,
+    #[key]
+    pub round_number: u8,
+    pub submitted_count: u32,
+    pub total_players: u32,
+}
+
 pub mod GameErrors {
     pub const GAME_NOT_INITIALIZED: felt252 = 'GAME NOT INITIALIZED';
     pub const GAME_ALREADY_STARTED: felt252 = 'GAME ALREADY STARTED';

@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
-    use tokens::erc20::{ERC20, ITokensDispatcher, ITokensDispatcherTrait};
+    use tokens::erc20::{ITokensDispatcher, ITokensDispatcherTrait};
     use starknet::{ContractAddress, contract_address_const, ClassHash};
     use openzeppelin::access::ownable::interface::{OwnableABIDispatcher, OwnableABIDispatcherTrait};
     use openzeppelin::token::erc20::interface::{
-        ERC20ABIDispatcher, ERC20ABIDispatcherTrait, IERC20MixinDispatcher as IERC20Dispatcher,
+        IERC20MixinDispatcher as IERC20Dispatcher,
         IERC20MixinDispatcherTrait as IERC20DispatcherTrait,
     };
     use openzeppelin::upgrades::interface::{IUpgradeableDispatcherTrait, IUpgradeableDispatcher};
@@ -113,10 +113,13 @@ mod tests {
         // Get emitted events
         let events = spy.get_events();
         assert!(events.events.len() == 1, "Minting Transfer event not emitted");
+
         // Verify Transfer event emission
-    // let expected_event = Transfer { from: zero(), to: recipient, value: mint_amount };
-    // let expected_events = array![(tokens_erc20_dispatcher.contract_address, expected_event)];
-    // spy.assert_emitted(@expected_events);
+        let expected_event = Event::Transfer(
+            Transfer { from: zero(), to: recipient, value: mint_amount },
+        );
+        let expected_events = array![(tokens_erc20_dispatcher.contract_address, expected_event)];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -127,9 +130,6 @@ mod tests {
         let mint_amount = 500_u256;
 
         let (_, _, _, tokens_erc20_dispatcher) = setup();
-
-        // Setup event spy
-        let mut spy = spy_events();
 
         // Set caller address to non_owner
         start_cheat_caller_address(tokens_erc20_dispatcher.contract_address, non_owner);

@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Compatible with OpenZeppelin Contracts for Cairo ^0.20.0
+use starknet::ContractAddress;
+
+#[starknet::interface]
+pub trait IERC721<TContractState> {
+    fn mint(ref self: TContractState, recipient: ContractAddress, token_id: u256);
+}
 
 #[starknet::contract]
 pub mod ERC721 {
@@ -9,6 +15,7 @@ pub mod ERC721 {
     use openzeppelin::upgrades::interface::IUpgradeable;
     use openzeppelin::upgrades::UpgradeableComponent;
     use starknet::{ClassHash, ContractAddress};
+    use super::IERC721;
 
     component!(path: ERC721Component, storage: erc721, event: ERC721Event);
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
@@ -63,25 +70,12 @@ pub mod ERC721 {
         self.ownable.initializer(owner);
     }
 
-    #[generate_trait]
-    #[abi(per_item)]
-    impl ExternalImpl of ExternalTrait {
-        #[external(v0)]
-        fn safe_mint(
-            ref self: ContractState,
-            recipient: ContractAddress,
-            token_id: u256,
-            data: Span<felt252>,
-        ) {
+    #[abi(embed_v0)]
+    impl ERC721Impl of IERC721<ContractState> {
+        fn mint(ref self: ContractState, recipient: ContractAddress, token_id: u256) {
             self.ownable.assert_only_owner();
-            self.erc721.safe_mint(recipient, token_id, data);
-        }
-
-        #[external(v0)]
-        fn safeMint(
-            ref self: ContractState, recipient: ContractAddress, tokenId: u256, data: Span<felt252>,
-        ) {
-            self.safe_mint(recipient, tokenId, data);
+            // This method may lead to the loss of tokens if `recipient` is not the ERC721 receiver.
+            self.erc721.mint(recipient, token_id);
         }
     }
 

@@ -16,7 +16,7 @@
 
 
 <p align="center">
-  <a href="https://your-build-link-here">
+  <a href="https://github.com/Prometheus-A/The-Velvet-Ace/actions">
     <img src="https://img.shields.io/badge/build-passing-brightgreen?style=for-the-badge&flat" alt="Build Status">
   </a>
 </p>

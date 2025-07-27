@@ -1,6 +1,6 @@
-use poker::models::hand::{Hand, HandRank};
 use poker::models::card::Card;
 use poker::models::game::GameParams;
+use poker::models::hand::{Hand, HandRank};
 use super::handimpl::HandImpl;
 
 pub trait HandTrait {

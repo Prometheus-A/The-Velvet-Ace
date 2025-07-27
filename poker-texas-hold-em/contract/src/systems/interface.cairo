@@ -1,10 +1,10 @@
-use poker::models::game::{Game, GameParams};
 use poker::models::card::Card;
+use poker::models::deck::Deck;
+use poker::models::game::{Game, GameParams};
 use poker::models::hand::Hand;
 use poker::models::player::Player;
-use poker::models::deck::Deck;
-use starknet::ContractAddress;
 use poker::traits::game::get_default_game_params;
+use starknet::ContractAddress;
 
 
 /// TODO: Read the GameREADME.md file to understand the rules of coding this game.

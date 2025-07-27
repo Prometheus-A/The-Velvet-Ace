@@ -1,6 +1,6 @@
+use core::hash::{HashStateExTrait, HashStateTrait};
 use core::num::traits::Zero;
 use core::poseidon::PoseidonTrait;
-use core::hash::{HashStateTrait, HashStateExTrait};
 
 #[derive(Copy, Drop, Serde, Default, Debug, Introspect, PartialEq, Hash)]
 pub struct Card {
@@ -99,7 +99,7 @@ pub mod Suits {
 
 #[cfg(test)]
 mod tests {
-    use super::{Card, CardTrait, Suits, Royals};
+    use super::{Card, CardTrait, Royals, Suits};
 
     #[test]
     fn test_card_is_valid() {

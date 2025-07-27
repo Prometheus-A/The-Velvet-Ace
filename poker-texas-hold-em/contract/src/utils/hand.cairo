@@ -1,5 +1,5 @@
-use crate::models::hand::{Hand, HandRank};
 use crate::models::card::{Card, Royals};
+use crate::models::hand::{Hand, HandRank};
 
 /// Determines the winning hand(s) among an array of hands with the same HandRank.
 ///
@@ -33,7 +33,7 @@ fn extract_kicker(hands: Array<Hand>, hand_rank: u16) -> (Array<Hand>, Array<Car
         let mut sorted_hands: Array<Hand> = array![];
         for i in 0..hands.len() {
             sorted_hands.append(hands.at(i).clone());
-        };
+        }
         return (sorted_hands, array![]);
     }
 
@@ -43,14 +43,14 @@ fn extract_kicker(hands: Array<Hand>, hand_rank: u16) -> (Array<Hand>, Array<Car
         assert(hand.cards.len() == 5, 'Hand must have 5 cards');
         let key = get_key(hand, rank);
         keys_and_hands.append((key, hand.clone()));
-    };
+    }
 
     let sorted = bubble_sort_keys_and_hands(keys_and_hands);
     let mut sorted_hands: Array<Hand> = array![];
     for i in 0..sorted.len() {
         let (_, hand) = sorted.at(i);
         sorted_hands.append(hand.clone());
-    };
+    }
 
     let mut kicker: Array<Card> = array![];
     if sorted_hands.len() == 1 {
@@ -98,7 +98,7 @@ fn bubble_sort_keys_and_hands(mut arr: Array<(Array<u16>, Hand)>) -> Array<(Arra
                 swapped = true;
             };
         };
-    };
+    }
     arr
 }
 
@@ -114,11 +114,11 @@ fn generate_combinations(cards: Array<Card>, k: usize) -> Array<Array<Card>> {
             if i & pow(2, j.try_into().unwrap()) != 0 {
                 subset.append(*cards.at(j));
             }
-        };
+        }
         if subset.len() == k {
             result.append(subset);
         };
-    };
+    }
     result
 }
 
@@ -134,7 +134,7 @@ fn evaluate_cards(cards: Array<Card>) -> (Array<Card>, HandRank) {
             card.value
         };
         card_data.append((card.value, poker_value, card.suit));
-    };
+    }
 
     // Sort by poker_value descending
     let mut sorted: Array<(u16, u16, u8)> = bubble_sort(card_data.clone());
@@ -146,12 +146,12 @@ fn evaluate_cards(cards: Array<Card>) -> (Array<Card>, HandRank) {
     for i in 0..sorted.len() {
         let (val, _, _) = *sorted[i];
         values.append(val);
-    };
+    }
 
     for i in 0..values.len() {
         let val = *values.at(i);
         value_counts.insert(val.into(), value_counts.get(val.into()) + 1);
-    };
+    }
 
     let mut counts: Array<u8> = array![];
     for i in 1..14_u32 {
@@ -159,7 +159,7 @@ fn evaluate_cards(cards: Array<Card>) -> (Array<Card>, HandRank) {
         if count > 0 {
             counts.append(count);
         };
-    };
+    }
     let sorted_counts: Array<u8> = bubble_sort_u8(counts.clone());
 
     // Evaluate hand rank
@@ -212,7 +212,7 @@ fn bubble_sort(mut arr: Array<(u16, u16, u8)>) -> Array<(u16, u16, u8)> {
                 swapped = true;
             };
         };
-    };
+    }
     arr
 }
 
@@ -229,7 +229,7 @@ fn bubble_sort_u8(mut arr: Array<u8>) -> Array<u8> {
                 swapped = true;
             };
         };
-    };
+    }
     arr
 }
 
@@ -244,7 +244,7 @@ fn set_array_element<T, +Clone<T>, +Drop<T>>(
         } else {
             new_arr.append(arr.at(i).clone());
         };
-    };
+    }
     new_arr
 }
 
@@ -307,13 +307,13 @@ fn sort_cards_by_poker_value(cards: @Array<Card>) -> Array<Card> {
             card.value
         };
         card_data.append((card.value, poker_value, card.suit));
-    };
+    }
     let sorted_data = bubble_sort(card_data);
     let mut sorted_cards: Array<Card> = array![];
     for i in 0..sorted_data.len() {
         let (value, _, suit) = *sorted_data.at(i);
         sorted_cards.append(Card { suit, value });
-    };
+    }
     sorted_cards
 }
 
@@ -331,7 +331,7 @@ fn bubble_sort_u16(mut arr: Array<u16>) -> Array<u16> {
                 swapped = true;
             };
         };
-    };
+    }
     arr
 }
 
@@ -342,7 +342,7 @@ fn get_one_pair_key(hand: @Hand) -> Array<u16> {
     for i in 0..hand.cards.len() {
         let card = *hand.cards.at(i);
         value_counts.insert(card.value.into(), value_counts.get(card.value.into()) + 1);
-    };
+    }
     let mut pair_value: u16 = 0;
     let mut kickers: Array<u16> = array![];
     for v in 1..15_u16 {
@@ -352,7 +352,7 @@ fn get_one_pair_key(hand: @Hand) -> Array<u16> {
         } else if count == 1 {
             kickers.append(v);
         }
-    };
+    }
     let sorted_kickers = bubble_sort_u16(kickers);
     array![pair_value, *sorted_kickers.at(0), *sorted_kickers.at(1), *sorted_kickers.at(2)]
 }
@@ -364,7 +364,7 @@ fn get_two_pair_key(hand: @Hand) -> Array<u16> {
     for i in 0..hand.cards.len() {
         let card = *hand.cards.at(i);
         value_counts.insert(card.value.into(), value_counts.get(card.value.into()) + 1);
-    };
+    }
     let mut pairs: Array<u16> = array![];
     let mut kicker: u16 = 0;
     for v in 1..15_u16 {
@@ -374,7 +374,7 @@ fn get_two_pair_key(hand: @Hand) -> Array<u16> {
         } else if count == 1 {
             kicker = v;
         }
-    };
+    }
     let sorted_pairs = bubble_sort_u16(pairs);
     array![*sorted_pairs.at(0), *sorted_pairs.at(1), kicker]
 }
@@ -386,7 +386,7 @@ fn get_three_of_a_kind_key(hand: @Hand) -> Array<u16> {
     for i in 0..hand.cards.len() {
         let card = *hand.cards.at(i);
         value_counts.insert(card.value.into(), value_counts.get(card.value.into()) + 1);
-    };
+    }
     let mut three_value: u16 = 0;
     let mut kickers: Array<u16> = array![];
     for v in 1..15_u16 {
@@ -396,7 +396,7 @@ fn get_three_of_a_kind_key(hand: @Hand) -> Array<u16> {
         } else if count == 1 {
             kickers.append(v);
         }
-    };
+    }
     let sorted_kickers = bubble_sort_u16(kickers);
     array![three_value, *sorted_kickers.at(0), *sorted_kickers.at(1)]
 }
@@ -408,7 +408,7 @@ fn get_full_house_key(hand: @Hand) -> Array<u16> {
     for i in 0..hand.cards.len() {
         let card = *hand.cards.at(i);
         value_counts.insert(card.value.into(), value_counts.get(card.value.into()) + 1);
-    };
+    }
     let mut three_value: u16 = 0;
     let mut pair_value: u16 = 0;
     for v in 1..15_u16 {
@@ -418,7 +418,7 @@ fn get_full_house_key(hand: @Hand) -> Array<u16> {
         } else if count == 2 {
             pair_value = v;
         }
-    };
+    }
     array![three_value, pair_value]
 }
 
@@ -429,7 +429,7 @@ fn get_four_of_a_kind_key(hand: @Hand) -> Array<u16> {
     for i in 0..hand.cards.len() {
         let card = *hand.cards.at(i);
         value_counts.insert(card.value.into(), value_counts.get(card.value.into()) + 1);
-    };
+    }
     let mut four_value: u16 = 0;
     let mut kicker: u16 = 0;
     for v in 1..15_u16 {
@@ -439,7 +439,7 @@ fn get_four_of_a_kind_key(hand: @Hand) -> Array<u16> {
         } else if count == 1 {
             kicker = v;
         }
-    };
+    }
     array![four_value, kicker]
 }
 
@@ -456,7 +456,7 @@ fn get_high_card_key(hand: @Hand) -> Array<u16> {
             card.value
         };
         values.append(poker_value);
-    };
+    }
     values
 }
 
@@ -484,7 +484,7 @@ fn compare_arrays(a: @Array<u16>, b: @Array<u16>) -> felt252 {
             result = -1;
             break;
         }
-    };
+    }
 
     if result != 0 {
         result
@@ -613,10 +613,10 @@ fn bit_and(a: u32, b: u32) -> u32 {
         let bit_b = b_copy % 2;
         if bit_a == 1 && bit_b == 1 {
             result += pow(2, position);
-        };
+        }
         a_copy /= 2;
         b_copy /= 2;
-    };
+    }
     result
 }
 
@@ -637,6 +637,6 @@ fn pow(base: u32, exp: u32) -> u32 {
     let mut result = 1_u32;
     for _i in 0..exp {
         result *= base;
-    };
+    }
     result
 }

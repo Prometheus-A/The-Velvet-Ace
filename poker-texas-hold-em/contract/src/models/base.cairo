@@ -1,10 +1,10 @@
+use poker::models::card::Card;
 /// TODO: make sure you create events
 ///
 /// **********************************************************************************************
 /// Events
 use poker::models::game::GameParams;
 use starknet::ContractAddress;
-use poker::models::card::Card;
 
 /// EVENTS
 

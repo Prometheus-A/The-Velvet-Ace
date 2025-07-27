@@ -4,26 +4,26 @@ mod systems {
 }
 
 mod models {
+    mod base;
+    mod card;
     mod deck;
     mod game;
     mod hand;
     mod player;
-    mod card;
-    mod base;
 }
 
 mod traits {
-    mod handtrait;
+    mod deck;
     mod game;
     mod handimpl;
-    mod deck;
+    mod handtrait;
     mod player;
 }
 
 mod utils {
-    mod hand;
-    mod game;
     mod deck;
+    mod game;
+    mod hand;
 }
 
 #[cfg(test)]
@@ -33,6 +33,6 @@ mod tests {
     mod test_actions;
     mod test_hand_compare;
     mod test_hand_rank;
-    mod test_world;
     mod test_resolve_round;
+    mod test_world;
 }

@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use crate::models::hand::{Hand, HandTrait, HandRank};
-    use crate::models::card::{Suits, Royals, Card};
-    use starknet::{contract_address_const, ContractAddress};
     use core::num::traits::Zero;
+    use starknet::{ContractAddress, contract_address_const};
+    use crate::models::card::{Card, Royals, Suits};
+    use crate::models::hand::{Hand, HandRank, HandTrait};
 
     #[test]
     fn test_rank_straight_low_and_compare_hands() {

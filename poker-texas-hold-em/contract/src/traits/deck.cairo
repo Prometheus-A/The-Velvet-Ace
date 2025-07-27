@@ -1,10 +1,10 @@
+use core::hash::{HashStateExTrait, HashStateTrait};
 use core::ops::IndexView;
-use starknet::{ContractAddress, contract_address_const};
-use core::poseidon::{PoseidonTrait};
-use core::hash::{HashStateTrait, HashStateExTrait};
-use poker::models::deck::Deck;
+use core::poseidon::PoseidonTrait;
 use poker::models::card::Card;
+use poker::models::deck::Deck;
 use poker::utils::deck::count_unique_cards;
+use starknet::{ContractAddress, contract_address_const};
 
 // pub const DEFAULT_DECK_LENGTH: u32 = 52; // move this up up
 
@@ -24,7 +24,7 @@ pub impl DeckImpl of DeckTrait {
                 let card: Card = Card { suit, value };
                 cards.append(card);
             };
-        };
+        }
 
         self.cards = cards;
     }
@@ -48,7 +48,7 @@ pub impl DeckImpl of DeckTrait {
         while i < length {
             remaining_indices.append(i);
             i += 1;
-        };
+        }
 
         // Select random cards until we've used all indices
         while remaining_indices.len() > 0 {
@@ -67,9 +67,9 @@ pub impl DeckImpl of DeckTrait {
                     new_remaining.append(*remaining_indices.at(j));
                 }
                 j += 1;
-            };
+            }
             remaining_indices = new_remaining;
-        };
+        }
 
         // Update the deck
         self.cards = shuffled_cards;
@@ -96,7 +96,7 @@ pub impl DeckImpl of DeckTrait {
                 let card: Card = Card { suit, value };
                 ordered_deck.append(card);
             };
-        };
+        }
 
         // Compare positions
         let mut diff_count: u32 = 0;
@@ -106,7 +106,7 @@ pub impl DeckImpl of DeckTrait {
                 diff_count += 1;
             }
             i += 1;
-        };
+        }
 
         // If at least half of the cards moved → shuffled
         diff_count * 2 >= length

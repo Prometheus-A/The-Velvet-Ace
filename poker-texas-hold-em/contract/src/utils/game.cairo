@@ -1,7 +1,7 @@
-use crate::models::deck::Deck;
+use core::hash::{HashStateExTrait, HashStateTrait};
+use core::poseidon::{PoseidonTrait, hades_permutation, poseidon_hash_span};
 use crate::models::card::{Card, CardTrait};
-use core::poseidon::{PoseidonTrait, poseidon_hash_span, hades_permutation};
-use core::hash::{HashStateTrait, HashStateExTrait};
+use crate::models::deck::Deck;
 
 #[derive(Drop, Clone, Serde, Default)]
 pub struct MerkleState {
@@ -45,7 +45,7 @@ pub impl MerkleImpl of MerkleTrait {
             if current_nodes_lvl_len > 1 && current_nodes_lvl_len % 2 != 0 {
                 current_nodes_lvl_len += 1;
             };
-        };
+        }
         proof
     }
 
@@ -74,7 +74,7 @@ pub impl MerkleImpl of MerkleTrait {
                 } else {
                     hash(*proof_element, leaf)
                 };
-        };
+        }
         leaf == root
     }
 
@@ -94,7 +94,7 @@ pub impl MerkleImpl of MerkleTrait {
                 };
 
             index /= 2;
-        };
+        }
 
         current_hash == root
     }
@@ -126,7 +126,7 @@ fn get_next_level(mut nodes: Span<felt252>) -> Array<felt252> {
             hash(right, *left)
         };
         next_level.append(node);
-    };
+    }
     next_level
 }
 
@@ -137,11 +137,11 @@ fn _build_tree_v2(data: Array<Card>, salt: Array<felt252>) -> Array<felt252> {
 
     if data_len > 0 && (data_len % 2) != 0 {
         last_element = Option::Some(data.at(data_len - 1).clone());
-    };
+    }
 
     for mut value in data {
         _hashes.append(value.hash(salt.clone()));
-    };
+    }
 
     let mut current_nodes_lvl_len = data_len;
     let mut hashes_offset = 0;
@@ -153,7 +153,7 @@ fn _build_tree_v2(data: Array<Card>, salt: Array<felt252>) -> Array<felt252> {
             current_nodes_lvl_len += 1;
         },
         Option::None => {},
-    };
+    }
 
     while current_nodes_lvl_len > 0 {
         let mut i = 0;
@@ -166,7 +166,7 @@ fn _build_tree_v2(data: Array<Card>, salt: Array<felt252>) -> Array<felt252> {
             _hashes.append(hash);
 
             i += 2;
-        };
+        }
 
         hashes_offset += current_nodes_lvl_len;
         current_nodes_lvl_len /= 2;
@@ -176,7 +176,7 @@ fn _build_tree_v2(data: Array<Card>, salt: Array<felt252>) -> Array<felt252> {
             _hashes.append(last_elem);
             current_nodes_lvl_len += 1;
         };
-    };
+    }
 
     _hashes
 }
@@ -188,7 +188,7 @@ fn hash(data1: felt252, data2: felt252) -> felt252 {
 
 #[cfg(test)]
 pub mod Tests {
-    use crate::models::card::{Card, Suits, Royals, CardTrait};
+    use crate::models::card::{Card, CardTrait, Royals, Suits};
     use super::{MerkleState, MerkleTrait};
 
     fn salt() -> Array<felt252> {
@@ -219,7 +219,7 @@ pub mod Tests {
         for i in 0..cards.len() {
             let mut card = *cards.at(i);
             leaves.append(card.hash(salt()));
-        };
+        }
 
         let proof = merkle_state.generate_proof_v2(0);
 

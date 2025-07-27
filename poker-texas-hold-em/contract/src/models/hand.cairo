@@ -1,7 +1,7 @@
-use starknet::ContractAddress;
-use super::card::{Card, Royals};
 use poker::traits::handtrait::HandTrait;
 use poker::utils::hand::evaluate_cards;
+use starknet::ContractAddress;
+use super::card::{Card, Royals};
 
 /// Created once and for all for every available player.
 #[derive(Serde, Drop, Clone, Debug, PartialEq)]
@@ -109,10 +109,10 @@ impl U16HandRank of Into<u16, HandRank> {
 /// @pope-h
 #[cfg(test)]
 mod tests {
-    use super::{Hand, HandRank, HandTrait, Card, ContractAddress, Royals};
-    use starknet::contract_address_const;
-    use poker::utils::hand::{extract_kicker};
     use poker::models::game::{GameMode, GameParams};
+    use poker::utils::hand::extract_kicker;
+    use starknet::contract_address_const;
+    use super::{Card, ContractAddress, Hand, HandRank, HandTrait, Royals};
     // use crate::models::card::Suits;
 
     // convenience constructor for cards

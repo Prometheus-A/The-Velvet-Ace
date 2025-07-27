@@ -2,7 +2,7 @@
 mod ERC20 {
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin::token::erc20::{ERC20Component, ERC20HooksEmptyImpl};
-    use starknet::{ContractAddress};
+    use starknet::ContractAddress;
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);

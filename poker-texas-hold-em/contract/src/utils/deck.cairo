@@ -48,17 +48,17 @@ pub fn verify_game(
         for j in 0..hand.cards.len() {
             deck.append(*hand.cards.at(j));
         };
-    };
+    }
 
     // append community cards next.
     for i in 0..community_cards.len() {
         deck.append(*community_cards.at(i));
-    };
+    }
 
     // then append the remaining deck cards
     for card in deck_cards {
         deck.append(card);
-    };
+    }
 
     if !deck.is_shuffled() || !deck.is_cards_distinct() {
         return false;
@@ -91,7 +91,7 @@ pub fn verify_game(
             }
             card_index += 1;
         };
-    };
+    }
 
     deck_verified && card_verified
 }
@@ -124,7 +124,7 @@ pub fn count_unique_cards(deck: @Deck) -> u32 {
         }
 
         i += 1;
-    };
+    }
 
     count
 }
@@ -170,12 +170,12 @@ pub fn count_unique_cards(deck: @Deck) -> u32 {
 
 #[cfg(test)]
 mod Tests {
-    use super::verify_game;
-    use crate::models::game::Game;
+    use crate::models::card::{Card, Royals, Suits};
     use crate::models::deck::{Deck, DeckTrait};
-    use crate::models::card::{Card, Suits, Royals};
+    use crate::models::game::Game;
     use crate::models::hand::{Hand, HandTrait};
-    use super::super::game::{MerkleTrait, MerkleState};
+    use super::verify_game;
+    use super::super::game::{MerkleState, MerkleTrait};
 
     fn card(suit: u8, value: u16) -> Card {
         Card { suit, value }
@@ -200,19 +200,19 @@ mod Tests {
             let card = deck.deal_card();
             player1_hand.add_card(card);
             player_cards.append(card);
-        };
+        }
 
         for _ in 0..2_u32 {
             let card = deck.deal_card();
             player2_hand.add_card(card);
             player_cards.append(card);
-        };
+        }
 
         let mut dealt_cards_state = MerkleTrait::new(player_cards.clone(), salt2.clone());
         let mut community_cards = array![];
         for _ in 0..5_u32 {
             community_cards.append(deck.deal_card());
-        };
+        }
 
         let hands = array![player1_hand, player2_hand];
         let mut game_proofs = array![];
@@ -222,7 +222,7 @@ mod Tests {
             game_proofs.append(proof);
             let proof = dealt_cards_state.generate_proof_v2(i.into());
             dealt_cards_proofs.append(proof);
-        };
+        }
         let game_root = deck_state.get_root();
         println!("Game root in test: {}", game_root);
         let dealt_cards_root = dealt_cards_state.get_root();

@@ -1,8 +1,8 @@
+use core::num::traits::Zero;
+use poker::traits::game::GameTrait;
 use starknet::ContractAddress;
 use super::card::Card;
 use super::hand::Hand;
-use poker::traits::game::GameTrait;
-use core::num::traits::Zero;
 
 /// CashGame. same as the `true` value for the Tournament. CashGame should allow incoming players...
 /// may be refactored in the future.
@@ -27,6 +27,7 @@ pub struct GameParams {
     kicker_split: bool,
     min_amount_of_chips: u256,
     blind_spacing: u16,
+    bet_spacing: u256,
     showdown_type: ShowdownType,
 }
 

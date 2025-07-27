@@ -1,8 +1,8 @@
-use starknet::ContractAddress;
 use core::num::traits::Zero;
-use super::base::GameErrors;
-use super::game::{Game, GameTrait, GameMode};
 use poker::traits::player::PlayerTrait;
+use starknet::ContractAddress;
+use super::base::GameErrors;
+use super::game::{Game, GameMode, GameTrait};
 
 // the locked variable takes in a tuple of (is_locked, game_id) if the player is already
 // locked to a session.

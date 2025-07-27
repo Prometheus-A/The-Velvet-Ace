@@ -1,17 +1,17 @@
 #[cfg(test)]
 mod tests {
     use dojo::event::EventStorageTest;
-    use dojo_cairo_test::WorldStorageTestTrait;
-    use dojo::model::{ModelStorage, ModelValueStorage, ModelStorageTest};
+    use dojo::model::{ModelStorage, ModelStorageTest, ModelValueStorage};
     use dojo::world::{WorldStorage, WorldStorageTrait};
     use dojo_cairo_test::{
-        spawn_test_world, NamespaceDef, TestResource, ContractDefTrait, ContractDef,
+        ContractDef, ContractDefTrait, NamespaceDef, TestResource, WorldStorageTestTrait,
+        spawn_test_world,
     };
     use poker::models::game::{Game, GameTrait};
     use poker::models::player::{Player, PlayerTrait};
-    use poker::traits::game::get_default_game_params;
     use poker::systems::interface::{IActionsDispatcher, IActionsDispatcherTrait};
     use poker::tests::setup::setup::{CoreContract, deploy_contracts};
+    use poker::traits::game::get_default_game_params;
     use starknet::ContractAddress;
     use starknet::testing::{set_account_contract_address, set_contract_address};
 

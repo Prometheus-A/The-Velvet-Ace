@@ -1,8 +1,8 @@
-use poker::models::player::{Player, PlayerTrait};
-use poker::models::deck::{Deck, DeckTrait};
-use poker::models::game::{Game, GameParams, GameMode};
 use poker::models::base::GameErrors;
 use poker::models::card::Card;
+use poker::models::deck::{Deck, DeckTrait};
+use poker::models::game::{Game, GameMode, GameParams};
+use poker::models::player::{Player, PlayerTrait};
 use starknet::ContractAddress;
 
 // Adequate minimum and maximum values for game parameters

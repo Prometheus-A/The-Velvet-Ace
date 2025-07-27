@@ -1,5 +1,5 @@
-use super::card::Card;
 use poker::traits::deck::DeckTrait;
+use super::card::Card;
 #[derive(Serde, Drop, Clone, Default, PartialEq)]
 #[dojo::model]
 pub struct Deck {
@@ -10,9 +10,9 @@ pub struct Deck {
 
 #[cfg(test)]
 mod tests {
-    use super::{Deck, Card};
     use poker::traits::deck::DeckTrait;
     use poker::utils::deck::count_unique_cards;
+    use super::{Card, Deck};
 
     // @augustin-v
     // Helper function to check if two decks have different card ordering
@@ -33,7 +33,7 @@ mod tests {
                 break;
             }
             i += 1;
-        };
+        }
 
         found_difference
     }
@@ -69,7 +69,7 @@ mod tests {
             suit_counts.insert(suit_key, suit_counts.get(suit_key) + 1);
             value_counts.insert(value_key, value_counts.get(value_key) + 1);
             i += 1;
-        };
+        }
 
         // Check each suit has 13 cards
         i = 0;
@@ -77,7 +77,7 @@ mod tests {
             let suit_key: felt252 = i.into();
             assert(suit_counts.get(suit_key) == 13, 'Each suit should have 13 cards');
             i += 1;
-        };
+        }
 
         // Check each value appears 4 times (once for each suit)
         i = 0;
@@ -142,7 +142,7 @@ mod tests {
         while i < num_to_deal {
             let _ = deck.deal_card();
             i += 1;
-        };
+        }
         assert(deck.cards.len() == initial_size - num_to_deal - 1, 'Deck size should reduce');
 
         // Test 3: Verify we can deal all remaining cards
@@ -151,7 +151,7 @@ mod tests {
         while i < remaining {
             let _ = deck.deal_card();
             i += 1;
-        };
+        }
         assert(deck.cards.len() == 0, 'Deck should be empty');
     }
 

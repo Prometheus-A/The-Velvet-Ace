@@ -4,16 +4,17 @@ mod setup {
         ContractDef, ContractDefTrait, NamespaceDef, TestResource, WorldStorageTestTrait,
         deploy_contract, spawn_test_world,
     };
-    use poker::systems::{actions::actions, interface::IActionsDispatcher};
-    use starknet::testing::{set_account_contract_address, set_contract_address};
     use poker::models::base::{
-        m_Id, e_GameInitialized, e_CardDealt, e_HandCreated, e_HandResolved, e_RoundResolved,
-        e_PlayerJoined,
+        e_CardDealt, e_GameInitialized, e_HandCreated, e_HandResolved, e_PlayerJoined,
+        e_RoundResolved, m_Id,
     };
     use poker::models::deck::m_Deck;
     use poker::models::game::m_Game;
     use poker::models::hand::m_Hand;
     use poker::models::player::m_Player;
+    use poker::systems::actions::actions;
+    use poker::systems::interface::IActionsDispatcher;
+    use starknet::testing::{set_account_contract_address, set_contract_address};
 
 
     #[starknet::interface]
@@ -71,7 +72,7 @@ mod setup {
                     );
                 },
             }
-        };
+        }
         world.sync_perms_and_inits(cdefs.span());
 
         let systems = Systems { actions: IActionsDispatcher { contract_address: actions_address } };

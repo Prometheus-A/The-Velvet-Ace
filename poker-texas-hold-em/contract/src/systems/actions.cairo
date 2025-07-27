@@ -1,17 +1,15 @@
 /// POKER CONTRACT
 #[dojo::contract]
 pub mod actions {
-    use core::num::traits::Zero;
     use core::ecdsa::{check_ecdsa_signature, recover_public_key};
+    use core::num::traits::Zero;
     use core::poseidon::poseidon_hash_span;
-    use starknet::{ContractAddress, get_caller_address, get_contract_address, get_block_timestamp};
-
     use dojo::event::EventStorage;
     use dojo::model::{Model, ModelStorage, ModelValueStorage};
     use dojo::world::WorldStorage;
     use poker::models::base::{
-        CardDealt, GameConcluded, GameErrors, GameInitialized, HandCreated, HandResolved, Id,
-        PlayerJoined, PlayerLeft, RoundResolved, RoundStarted, RoundEnded, CommunityCardDealt,
+        CardDealt, CommunityCardDealt, GameConcluded, GameErrors, GameInitialized, HandCreated,
+        HandResolved, Id, PlayerJoined, PlayerLeft, RoundEnded, RoundResolved, RoundStarted,
     };
     use poker::models::card::{Card, CardTrait};
     use poker::models::deck::{Deck, DeckTrait};
@@ -21,6 +19,7 @@ pub mod actions {
     use poker::models::hand::{Hand, HandTrait, Proofs};
     use poker::models::player::{Player, PlayerTrait};
     use poker::traits::game::get_default_game_params;
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
     use crate::systems::interface::IActions;
     use crate::utils::deck::verify_game;
 
@@ -155,7 +154,7 @@ pub mod actions {
                     if p.is_in_game(game_id) {
                         players.append(c);
                     }
-                };
+                }
                 game.players = players;
                 game.reshuffled += 1;
             }
@@ -250,7 +249,7 @@ pub mod actions {
             while i != game_pots.len() - 1 {
                 updated_game_pots.append(*game_pots.at(i));
                 i += 1;
-            };
+            }
             updated_game_pots.append(game_pot);
 
             world.write_model(@player);
@@ -319,7 +318,7 @@ pub mod actions {
             while i != game_pots.len() - 1 {
                 updated_game_pots.append(*game_pots.at(i));
                 i += 1;
-            };
+            }
             updated_game_pots.append(game_pot);
 
             world.write_model(@player);
@@ -631,7 +630,7 @@ pub mod actions {
                         world.write_member(Model::<Game>::ptr_from_keys(game_id), po, offset);
                     }
                 }
-            };
+            }
 
             if new_pot_ {
                 game_pots.append(new_pot);
@@ -660,7 +659,7 @@ pub mod actions {
                     break; // usually the last two. break afterwards
                 }
                 game_pots_ref.append(*game_pots.at(i));
-            };
+            }
             game_pots_ref
         }
 
@@ -855,7 +854,7 @@ pub mod actions {
                     break;
                 }
                 i += 1;
-            };
+            }
             result
         }
 
@@ -881,7 +880,7 @@ pub mod actions {
                 }
                 next_index = (next_index + 1) % num_players;
                 attempts += 1;
-            };
+            }
             result
         }
 
@@ -922,7 +921,7 @@ pub mod actions {
                     break;
                 }
                 i += 1;
-            };
+            }
 
             // If no dealer is found, return None
             if !found {
@@ -1026,19 +1025,19 @@ pub mod actions {
                     player.eligible_pots = 0;
                     world.write_model(@player);
                 }
-            };
+            }
 
             let (winning_hands, _) = self._extract_winner();
             let mut winners = array![];
             for i in 0..winning_hands.len() {
                 let winner = winning_hands.at(i);
                 winners.append(*winner.player);
-            };
+            }
 
             let mut tpot = 0; // total pot
             for pot in game.pots {
                 tpot += pot;
-            };
+            }
 
             let round_resolved = RoundResolved {
                 game_id: game_id, can_join: can_join, winners: winners, pot: tpot,
@@ -1078,7 +1077,7 @@ pub mod actions {
                 assert(*player_game_id == game_id, 'Players in different games');
 
                 i += 1;
-            };
+            }
 
             let mut world = self.world_default();
             let mut game: Game = world.read_model(game_id);
@@ -1092,7 +1091,7 @@ pub mod actions {
                 deck.new_deck();
                 deck.shuffle();
                 world.write_model(@deck); // should work, I guess.
-            };
+            }
 
             // Array of all the players
             let mut resolved_players = ArrayTrait::new();
@@ -1115,7 +1114,7 @@ pub mod actions {
 
                 world.write_model(@hand);
                 j += 1;
-            };
+            }
 
             world.emit_event(@HandResolved { game_id: game_id, players: resolved_players });
         }
@@ -1250,7 +1249,7 @@ pub mod actions {
                     break;
                 }
                 i += 1;
-            };
+            }
 
             // player to the right, small blind, then that's all.
             // set the next_player accordingly

@@ -53,4 +53,328 @@ impl ContractAddressDefault of Default<ContractAddress> {
 
 /// TESTS ON PLAYER MODEL
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use dojo::event::EventStorageTest;
+    use dojo_cairo_test::WorldStorageTestTrait;
+    use dojo::model::{ModelStorage, ModelValueStorage, ModelStorageTest};
+    use dojo::world::{WorldStorage, WorldStorageTrait};
+    use dojo_cairo_test::{
+        spawn_test_world, NamespaceDef, TestResource, ContractDefTrait, ContractDef,
+    };
+    use poker::models::game::{Game, GameTrait, ShowdownType};
+    use poker::models::player::{Player, PlayerTrait};
+    use poker::tests::setup::setup::{CoreContract, deploy_contracts};
+    use poker::models::base::GameErrors;
+    use poker::traits::game::get_default_game_params;
+    use starknet::ContractAddress;
+    use starknet::testing::{set_account_contract_address, set_contract_address};
+
+    fn PLAYER_1() -> ContractAddress {
+        starknet::contract_address_const::<'PLAYER_1'>()
+    }
+
+    fn PLAYER_2() -> ContractAddress {
+        starknet::contract_address_const::<'PLAYER_2'>()
+    }
+
+    fn PLAYER_3() -> ContractAddress {
+        starknet::contract_address_const::<'PLAYER_3'>()
+    }
+
+    fn PLAYER_4() -> ContractAddress {
+        starknet::contract_address_const::<'PLAYER_4'>()
+    }
+
+    fn mock_poker_game(ref world: WorldStorage) {
+        let game = Game {
+            id: 1,
+            in_progress: true,
+            has_ended: false,
+            current_round: 1,
+            round_in_progress: true,
+            current_player_count: 2,
+            players: array![PLAYER_1(), PLAYER_2(), PLAYER_3()],
+            deck: array![],
+            next_player: Option::Some(PLAYER_1()),
+            community_cards: array![],
+            pots: array![0],
+            current_bet: 0,
+            params: get_default_game_params(),
+            reshuffled: 0,
+            should_end: false,
+            deck_root: 0,
+            dealt_cards_root: 0,
+            nonce: 0,
+            community_dealing: false,
+            showdown: false,
+            round_count: 0,
+            highest_staker: Option::None,
+            previous_offset: 0,
+        };
+
+        let player_1 = Player {
+            id: PLAYER_1(),
+            alias: 'dub_zn',
+            chips: 2000,
+            current_bet: 0,
+            total_rounds: 1,
+            locked: (true, 1),
+            is_dealer: false,
+            in_round: true,
+            out: (0, 0),
+            pub_key: 0x1,
+            locked_chips: 0,
+            is_blacklisted: false,
+            eligible_pots: 1,
+        };
+
+        let player_2 = Player {
+            id: PLAYER_2(),
+            alias: 'Birdmannn',
+            chips: 5000,
+            current_bet: 0,
+            total_rounds: 1,
+            locked: (true, 2),
+            is_dealer: false,
+            in_round: true,
+            out: (0, 0),
+            pub_key: 0x2,
+            locked_chips: 0,
+            is_blacklisted: false,
+            eligible_pots: 1,
+        };
+
+        let player_3 = Player {
+            id: PLAYER_3(),
+            alias: 'chiscookeke11',
+            chips: 5000,
+            current_bet: 0,
+            total_rounds: 1,
+            locked: (false, 1),
+            is_dealer: false,
+            in_round: true,
+            out: (0, 0),
+            pub_key: 0x3,
+            locked_chips: 0,
+            is_blacklisted: false,
+            eligible_pots: 1,
+        };
+
+        world.write_model(@game);
+        world.write_models(array![@player_1, @player_2, @player_3].span());
+    }
+
+    fn mock_allowable_game(ref world: WorldStorage) {
+        let game = Game {
+            id: 2,
+            in_progress: true,
+            has_ended: false,
+            current_round: 1,
+            round_in_progress: false,
+            current_player_count: 2,
+            players: array![PLAYER_1(), PLAYER_2(), PLAYER_3()],
+            deck: array![],
+            next_player: Option::Some(PLAYER_1()),
+            community_cards: array![],
+            pots: array![0],
+            current_bet: 0,
+            params: get_default_game_params(),
+            reshuffled: 0,
+            should_end: false,
+            deck_root: 0,
+            dealt_cards_root: 0,
+            nonce: 0,
+            community_dealing: false,
+            showdown: false,
+            round_count: 0,
+            highest_staker: Option::None,
+            previous_offset: 0,
+        };
+
+        let player_1 = Player {
+            id: PLAYER_1(),
+            alias: 'dub_zn',
+            chips: 2000,
+            current_bet: 0,
+            total_rounds: 1,
+            locked: (true, 1),
+            is_dealer: false,
+            in_round: true,
+            out: (0, 0),
+            pub_key: 0x1,
+            locked_chips: 0,
+            is_blacklisted: false,
+            eligible_pots: 1,
+        };
+
+        let player_2 = Player {
+            id: PLAYER_2(),
+            alias: 'Birdmannn',
+            chips: 5000,
+            current_bet: 0,
+            total_rounds: 1,
+            locked: (true, 2),
+            is_dealer: false,
+            in_round: true,
+            out: (0, 0),
+            pub_key: 0x2,
+            locked_chips: 0,
+            is_blacklisted: false,
+            eligible_pots: 1,
+        };
+
+        let player_3 = Player {
+            id: PLAYER_3(),
+            alias: 'chiscookeke11',
+            chips: 5000,
+            current_bet: 0,
+            total_rounds: 1,
+            locked: (false, 1),
+            is_dealer: false,
+            in_round: true,
+            out: (0, 0),
+            pub_key: 0x3,
+            locked_chips: 0,
+            is_blacklisted: false,
+            eligible_pots: 1,
+        };
+
+        world.write_model(@game);
+        world.write_models(array![@player_1, @player_2, @player_3].span());
+    }
+
+    #[test]
+    fn test_exit_with_out_true_succeeds() {
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+
+        mock_poker_game(ref world);
+        let mut game: Game = world.read_model(1);
+        let mut player: Player = world.read_model(PLAYER_1());
+
+        player.exit(ref game, true);
+
+        assert_eq!(player.out, (game.id, game.reshuffled), "Player out should be set to game id and reshuffled");
+        assert_eq!(player.current_bet, 0, "Player current bet should be reset to 0");
+        assert_eq!(player.is_dealer, false, "Player should not be dealer after exit");
+        assert_eq!(player.in_round, false, "Player should not be in round after exit");
+        assert_eq!(player.locked, (false, 0), "Player should be unlocked after exit");
+        assert_eq!(game.current_player_count, 1, "Game player count should decrease by 1");
+    }
+
+    #[test]
+    fn test_exit_with_out_false_succeeds() {
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+
+        mock_poker_game(ref world);
+        let mut game: Game = world.read_model(1);
+        let mut player: Player = world.read_model(PLAYER_1());
+
+        player.exit(ref game, false);
+
+        assert_eq!(player.out, (0, 0), "Player out should be set to game id and reshuffled");
+        assert_eq!(player.current_bet, 0, "Player current bet should be reset to 0");
+        assert_eq!(player.is_dealer, false, "Player should not be dealer after exit");
+        assert_eq!(player.in_round, false, "Player should not be in round after exit");
+        assert_eq!(player.locked, (false, 0), "Player should be unlocked after exit");
+        assert_eq!(game.current_player_count, 1, "Game player count should decrease by 1");
+    }
+
+    #[test]
+    #[should_panic(expected: 'CANNOT EXIT, PLAYER NOT LOCKED')]
+    fn test_exit_without_lock_fails() {
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+
+        mock_poker_game(ref world);
+        let mut game: Game = world.read_model(1);
+        let mut player: Player = world.read_model(PLAYER_3());
+
+        player.exit(ref game, true);
+    }
+
+   #[test]
+    fn test_exit_with_splitted_showdown_returns_locked_chips() {
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+
+        mock_poker_game(ref world);
+        let mut game: Game = world.read_model(1);
+        let mut player: Player = world.read_model(PLAYER_1());
+
+        let stake = 1000;
+        game.params.showdown_type = ShowdownType::Splitted(stake);
+        player.chips = 2000;
+        player.locked_chips = stake;
+
+        player.exit(ref game, true);
+
+        assert_eq!(player.chips, 3000, "Player should get locked chips back");
+        assert_eq!(player.locked_chips, 0, "Locked chips should be reset to 0");
+    } 
+
+    
+    #[test]
+    #[should_panic(expected: 'GAME PLAYER COUNT SUB')]
+    fn test_exit_with_zero_player_count_fails() {
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+
+        mock_poker_game(ref world);
+        let mut game: Game = world.read_model(1);
+        let mut player: Player = world.read_model(PLAYER_1());
+
+        game.current_player_count = 0;
+        player.exit(ref game, true);
+    }
+
+    #[test]
+    #[should_panic(expected: 'BAD REQUEST')]
+    fn test_exit_with_invalid_player_fails() {
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+
+        mock_poker_game(ref world);
+        let mut game: Game = world.read_model(1);
+        let mut player: Player = world.read_model(PLAYER_2());
+
+        player.exit(ref game, true);
+    }
+
+    #[test]
+    fn test_enter_succeeds_new_player(){
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+
+        mock_allowable_game(ref world);
+        let mut game: Game = world.read_model(2);
+
+        let mut player = Player {
+            id: PLAYER_4(),
+            alias: 'Nobody',
+            chips: 5000,
+            current_bet: 0,
+            total_rounds: 1,
+            locked: (false, 1),
+            is_dealer: false,
+            in_round: true,
+            out: (0, 0),
+            pub_key: 0x3,
+            locked_chips: 0,
+            is_blacklisted: false,
+            eligible_pots: 1,
+        };
+
+        let is_full = player.enter(ref game);
+        assert_eq!(player.locked, (true, game.id), "Player should be locked to game");
+        assert_eq!(player.in_round, true, "Player should be in round");
+        assert_eq!(game.current_player_count, 3, "Game player count should increase");
+        assert_eq!(player.eligible_pots, 1, "Player should be eligible for 1 pot");
+        assert_eq!(is_full, false, "Game should not be full");
+
+        assert_eq!(game.players.len(), 4, "Player should be added to game players");
+        assert_eq!(*game.players.at(3), PLAYER_4(), "Last player should be PLAYER_4");
+    }
+
+}

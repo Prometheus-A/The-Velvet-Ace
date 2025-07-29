@@ -43,11 +43,6 @@ jobs:
           asdf install starknet-foundry 0.39.0
           asdf global starknet-foundry 0.39.0
 
-      - name: Build contracts
-        run: |
-          cd poker-texas-hold-em/contract
-          sozo build
-
       - name: Run tests
         run: |
           cd poker-texas-hold-em/contract

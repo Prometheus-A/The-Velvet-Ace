@@ -338,11 +338,13 @@ mod betting_flow_tests {
         let big_blind = game.params.big_blind;
         
         // Player 2 raises to an amount greater than big blind
-        // In the contract, the raise amount is the new total bet amount, not just the increment
+        // The raise amount is the new total bet the player wants to make
         let raise_amount = big_blind.into() * 2; // Double the big blind
         
         // Store initial values for verification
         let initial_chips = player_2_initial.chips;
+        let initial_current_bet = player_2_initial.current_bet;
+        let game_current_bet = game.current_bet; // This is the small blind amount
         
         // Execute the raise
         set_contract_address(PLAYER_2());
@@ -353,37 +355,40 @@ mod betting_flow_tests {
         let game_after: Game = world.read_model(1);
         
         // Based on the contract implementation:
-        // 1. The player's current_bet becomes the raise_amount
-        // 2. The game's current_bet becomes the player's current_bet
+        // 1. amount_to_call = game_current_bet - player.current_bet
+        // 2. total_required = amount_to_call + no_of_chips (raise_amount)
+        // 3. player.chips -= total_required
+        // 4. player.current_bet += total_required
+        // 5. game.current_bet = player.current_bet
+        
+        let amount_to_call = game_current_bet - initial_current_bet;
+        let total_required = amount_to_call + raise_amount;
+        let expected_current_bet = initial_current_bet + total_required;
         
         // Verify player's bet was set correctly
         assert!(
-            player_2_after.current_bet == raise_amount,
-            "Player's current bet should equal the raise amount"
+            player_2_after.current_bet == expected_current_bet,
+            "Player's current bet should be updated correctly"
         );
         
         // Verify game's current bet was updated
         assert!(
-            game_after.current_bet == raise_amount,
-            "Game current bet should be updated to the raise amount"
+            game_after.current_bet == expected_current_bet,
+            "Game current bet should match player's current bet"
+        );
+        
+        // Verify the chips were deducted correctly
+        let actual_chips_used = initial_chips - player_2_after.chips;
+        
+        assert!(
+            actual_chips_used == total_required,
+            "Player's chips should be reduced by the correct amount"
         );
         
         // Verify next player was set correctly
         assert!(
             game_after.next_player == Option::Some(PLAYER_3()),
             "Next player should be set to Player 3"
-        );
-        
-        // Verify the chips were deducted correctly
-        // In the contract, the total amount deducted is:
-        // amount_to_call (difference between current game bet and player bet) + raise_amount
-        let amount_to_call = game.current_bet - player_2_initial.current_bet; // small_blind - 0
-        let expected_chips_used = amount_to_call + raise_amount;
-        let actual_chips_used = initial_chips - player_2_after.chips;
-        
-        assert!(
-            actual_chips_used == expected_chips_used,
-            "Player's chips should be reduced by the correct amount"
         );
     }
 

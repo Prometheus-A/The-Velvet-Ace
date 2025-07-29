@@ -293,19 +293,23 @@ pub mod actions {
                 no_of_chips > game_current_bet, "Raise amount is less than the game's current bet.",
             );
 
+            // Validate bet spacing - raise amount must be in multiples of bet_spacing @kaylahray
+            assert!(
+                no_of_chips % params.bet_spacing.into() == 0,
+                "Raise amount must be in multiples of bet_spacing",
+            );
+
             // adjust this pot accordingly
             let mut game_pot = *game_pots.at(game_pots.len() - 1);
 
             let amount_to_call = game_current_bet - player.current_bet;
             let total_required = amount_to_call + no_of_chips;
             if game_pot == params.small_blind.into() {
-                assert!(
-                    no_of_chips > game_pot * 2, "Raise amount should be > twice the small blind.",
-                );
+                assert!(no_of_chips > game_pot * 2, "Raise must be > 2x blind.");
             }
 
-            assert!(no_of_chips > 0, "Raise amount must be greater than zero.");
-            assert!(player.chips >= total_required, "You don't have enough chips to raise.");
+            assert!(no_of_chips > 0, "Raise must be > 0.");
+            assert!(player.chips >= total_required, "Insufficient chips to raise.");
 
             if !self.adjust_stake(game_id, amount_to_call, ref player) {
                 player.chips -= total_required;
@@ -313,6 +317,15 @@ pub mod actions {
                 game_pot += total_required;
             }
             game_current_bet = player.current_bet;
+
+            // Set the player as highest staker after successful raise @kaylahray
+            let highest_staker_selector = selector!("highest_staker");
+            world
+                .write_member(
+                    Model::<Game>::ptr_from_keys(game_id),
+                    highest_staker_selector,
+                    Option::Some(player.id),
+                );
 
             let mut updated_game_pots: Array<u256> = ArrayTrait::new();
             let mut i = 0;
@@ -340,10 +353,31 @@ pub mod actions {
 
             let cb = selector!("current_bet");
             let mut game_current_bet = world.read_member(Model::<Game>::ptr_from_keys(game_id), cb);
+
             if amount < game_current_bet {
                 self.adjust_pot(game_id, ref player, game_current_bet);
+                world.write_model(@player);
+            } else {
+                // If all-in amount is >= current bet, player becomes highest staker @kaylahray
+                let new_bet = player.current_bet + amount;
+                if new_bet > game_current_bet {
+                    let highest_staker_selector = selector!("highest_staker");
+                    world
+                        .write_member(
+                            Model::<Game>::ptr_from_keys(game_id),
+                            highest_staker_selector,
+                            Option::Some(player.id),
+                        );
+                    // Update game's current bet @kaylahray
+                    world.write_member(Model::<Game>::ptr_from_keys(game_id), cb, new_bet);
+                }
+
+                // Update player state @kaylahray
+                player.current_bet += amount;
+                player.chips = 0;
+                world.write_model(@player);
             }
-            world.write_model(@player);
+
             self.after_play(player.id);
         }
 
@@ -530,6 +564,88 @@ pub mod actions {
         /// can't be const.
         fn world_default(self: @ContractState) -> WorldStorage {
             self.world(@"poker")
+        }
+
+        /// @Kaylahray Checks if betting round has concluded by verifying all active players have
+        /// equal bets
+        fn is_betting_round_concluded(
+            self: @ContractState, game_id: u64, world: @WorldStorage,
+        ) -> bool {
+            let game: Game = world.read_model(game_id);
+            let game_players = game.players.span();
+
+            let mut highest_bet: u256 = 0;
+            let mut active_player_count: u32 = 0;
+
+            // First pass: find the highest bet among active players
+            let mut i: u32 = 0;
+            while i < game_players.len() {
+                let player_addr = *game_players.at(i);
+                let player: Player = world.read_model(player_addr);
+
+                if player.in_round {
+                    active_player_count += 1;
+                    if player.current_bet > highest_bet {
+                        highest_bet = player.current_bet;
+                    }
+                }
+                i += 1;
+            };
+
+            if active_player_count <= 1 {
+                return true;
+            }
+
+            // Second pass: check if all active players who are not all-in have matched the highest
+            // bet
+            let mut all_matched = true;
+            let mut j: u32 = 0;
+            while j < game_players.len() {
+                let player_addr = *game_players.at(j);
+                let player: Player = world.read_model(player_addr);
+
+                if player.in_round {
+                    // Players who are all-in (0 chips) are exempt from matching
+                    if player.chips > 0 && player.current_bet != highest_bet {
+                        all_matched = false;
+                        break;
+                    }
+                }
+                j += 1;
+            };
+
+            all_matched
+        }
+
+        /// @kaylahray Resets betting values when a round concludes
+        fn reset_betting_round_values(self: @ContractState, game_id: u64, ref world: WorldStorage) {
+            let game: Game = world.read_model(game_id);
+            let game_players = game.players.span();
+
+            let mut i = 0;
+            while i < game_players.len() {
+                let player_addr = *game_players.at(i);
+                // Directly write to the player's current_bet field
+                world
+                    .write_member(
+                        Model::<Player>::ptr_from_keys(player_addr),
+                        selector!("current_bet"),
+                        0_u256,
+                    );
+                i += 1;
+            };
+
+            // Reset game's current_bet and highest_staker
+            world
+                .write_member(
+                    Model::<Game>::ptr_from_keys(game_id), selector!("current_bet"), 0_u256,
+                );
+            world
+                .write_member(
+                    Model::<Game>::ptr_from_keys(game_id),
+                    selector!("highest_staker"),
+                    Option::<ContractAddress>::None,
+                );
         }
 
         fn generate_id(self: @ContractState, target: felt252) -> u64 {
@@ -776,73 +892,50 @@ pub mod actions {
             );
         }
 
-        /// @Reentrancy, @Birdmannn
         fn after_play(ref self: ContractState, caller: ContractAddress) {
             let mut world = self.world_default();
-            let mut player: Player = world.read_model(caller);
+            let player: Player = world.read_model(caller);
             let (is_locked, game_id) = player.locked;
-
-            // Ensure the player is in a game
             assert(is_locked, 'Player not in game');
 
             let mut game: Game = world.read_model(game_id);
 
-            // Check if all community cards are dealt (5 cards in Texas Hold'em)
-            if game.community_cards.len() == 5 {
-                game.showdown = true;
-            }
+            let betting_concluded = self.is_betting_round_concluded(game_id, @world);
 
-            // Find the caller's index in the players array
-            let current_index_option: Option<usize> = self.find_player_index(@game.players, caller);
-            assert(current_index_option.is_some(), 'Caller not in game');
-            let current_index: usize = OptionTrait::unwrap(current_index_option);
+            if betting_concluded {
+                self.reset_betting_round_values(game_id, ref world);
+                game = world.read_model(game_id); // Reload game state
 
-            // Update game state with the player's action
-
-            // TODO: Crosscheck after_play, and adjust... may not be needed.
-            if player.current_bet > game.current_bet {
-                game.current_bet = player.current_bet; // Raise updates the current bet
-                game.highest_staker = Option::Some(caller);
-            } else if let Option::Some(highest_staker) = game.highest_staker {
-                if highest_staker == caller {
-                    // bet has gone round
-                    if game.community_cards.len() == 5 {
-                        game.showdown = true;
-                    } else {
-                        game.community_dealing = true;
-                    }
+                if game.community_cards.len() == 5 {
+                    game.showdown = true;
+                } else {
+                    game.community_dealing = true;
                 }
             }
 
-            world.write_model(@player);
-
-            // Determine the next active player or resolve the round
-            let next_player_option: Option<ContractAddress> = self
-                .find_next_active_player(@game.players, current_index, @world);
-
-            if next_player_option.is_none() {
-                // No active players remain, resolve the round
-                game.showdown = true;
+            // Now, set the next player
+            if game.showdown {
+                game.next_player = Option::None;
             } else {
-                game.next_player = next_player_option;
+                let current_index_option = self.find_player_index(@game.players, caller);
+                assert(current_index_option.is_some(), 'Caller not in game');
+                let current_index = OptionTrait::unwrap(current_index_option);
+                let next_player_option = self
+                    .find_next_active_player(@game.players, current_index, @world);
+
+                if let Option::Some(next_player_addr) = next_player_option {
+                    game.next_player = Option::Some(next_player_addr);
+                } else {
+                    // If no next player, something is wrong, or round should end.
+                    // `is_betting_round_concluded` should have caught this.
+                    game.showdown = true;
+                    game.next_player = Option::None;
+                }
             }
 
             world.write_model(@game);
-
-            if game.showdown {
-                let timestamp = get_block_timestamp();
-                let round_number = game.round_count;
-                let no_of_players = game.current_player_count;
-                let event = RoundEnded { game_id, timestamp, round_number, no_of_players };
-                world
-                    .write_member(
-                        Model::<GameStats>::ptr_from_keys(game_id),
-                        selector!("round_end_time"),
-                        timestamp,
-                    );
-                world.emit_event(@event);
-            }
         }
+
 
         fn find_player_index(
             self: @ContractState, players: @Array<ContractAddress>, player_address: ContractAddress,

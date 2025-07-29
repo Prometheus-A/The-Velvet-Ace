@@ -14,6 +14,7 @@ mod setup {
     use poker::models::game::m_Game;
     use poker::models::hand::m_Hand;
     use poker::models::player::m_Player;
+    use core::zeroable::Zeroable;
 
 
     #[starknet::interface]

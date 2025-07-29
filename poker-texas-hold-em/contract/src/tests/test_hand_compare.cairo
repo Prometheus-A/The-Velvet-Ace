@@ -38,6 +38,7 @@ mod tests {
             kicker_split: kicker_split,
             min_amount_of_chips: 2000,
             blind_spacing: 10,
+            bet_spacing: 20,
             showdown_type: ShowdownType::Gathered,
         }
     }

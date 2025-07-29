@@ -13,6 +13,7 @@ const MIN_BIG_BLIND: u64 = 2;
 const MIN_NO_OF_DECKS: u8 = 1;
 const MIN_AMOUNT_OF_CHIPS: u256 = 10;
 const MIN_BLIND_SPACING: u16 = 1;
+const MIN_BET_SPACING: u256 = 1;
 
 #[generate_trait]
 pub impl GameImpl of GameTrait {
@@ -36,6 +37,7 @@ pub impl GameImpl of GameTrait {
                     GameErrors::INVALID_GAME_PARAMS,
                 );
                 assert(params.blind_spacing >= MIN_BLIND_SPACING, GameErrors::INVALID_GAME_PARAMS);
+                assert(params.bet_spacing >= MIN_BET_SPACING, GameErrors::INVALID_GAME_PARAMS);
                 params
             },
             Option::None => get_default_game_params(),
@@ -72,6 +74,7 @@ fn get_default_game_params() -> GameParams {
         kicker_split: true,
         min_amount_of_chips: 100,
         blind_spacing: 10,
+        bet_spacing: 20,
         showdown_type: Default::default(),
     }
 }

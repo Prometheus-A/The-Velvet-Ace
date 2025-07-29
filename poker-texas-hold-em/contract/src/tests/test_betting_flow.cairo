@@ -1,12 +1,12 @@
 //! Comprehensive Betting Flow Tests
-//! 
+//!
 //! This module tests the complete betting flow scenarios including:
 //! - Small blind automatic deduction on game start
 //! - Player turn restrictions and validation
 //! - Call/raise betting mechanics with proper validation
 //! - All-in scenarios with pot adjustments
 //! - Complex multi-player betting rounds with pot management
-//! 
+//!
 //! @guha-rahul
 
 #[cfg(test)]
@@ -144,7 +144,7 @@ mod betting_flow_tests {
 
         world.write_model(@game);
         world.write_models(array![@player_1, @player_2, @player_3, @player_4].span());
-        
+
         game
     }
 
@@ -154,19 +154,19 @@ mod betting_flow_tests {
     fn simulate_round_start(ref world: WorldStorage) {
         let mut game: Game = world.read_model(1);
         let mut player_1: Player = world.read_model(PLAYER_1());
-        
+
         // Simulate small blind deduction (Player 1 is next to dealer)
         let small_blind = game.params.small_blind;
         player_1.chips -= small_blind.into();
         player_1.current_bet = small_blind.into();
-        
+
         // Set pot to small blind amount
         game.pots = array![small_blind.into()];
         game.current_bet = small_blind.into();
-        
+
         // Set next player to big blind player (Player 2)
         game.next_player = Option::Some(PLAYER_2());
-        
+
         world.write_model(@game);
         world.write_model(@player_1);
     }
@@ -175,9 +175,7 @@ mod betting_flow_tests {
     /// Used to test scenarios where players have matched bets
     /// @guha-rahul
     fn set_equal_bets_for_players(
-        ref world: WorldStorage,
-        player_addresses: Array<ContractAddress>,
-        bet_amount: u256
+        ref world: WorldStorage, player_addresses: Array<ContractAddress>, bet_amount: u256,
     ) {
         let mut i = 0;
         while i < player_addresses.len() {
@@ -197,59 +195,55 @@ mod betting_flow_tests {
         game_id: u64,
         expected_pot_count: u32,
         player_id: ContractAddress,
-        expected_eligible_pots: u8
+        expected_eligible_pots: u8,
     ) {
         let game: Game = world.read_model(game_id);
         let player: Player = world.read_model(player_id);
-        
-        assert!(
-            game.pots.len() == expected_pot_count,
-            "Expected pot count doesn't match actual"
-        );
+
+        assert!(game.pots.len() == expected_pot_count, "Expected pot count doesn't match actual");
         assert!(
             player.eligible_pots == expected_eligible_pots,
-            "Player eligible pots doesn't match expected"
+            "Player eligible pots doesn't match expected",
         );
     }
 
     // ==================== BETTING FLOW TESTS ====================
 
-    /// Test 1: Small blind should be automatically deducted from player next to dealer on game start
-    /// @guha-rahul
+    /// Test 1: Small blind should be automatically deducted from player next to dealer on game
+    /// start @guha-rahul
     #[test]
     fn test_small_blind_automatic_deduction_on_start() {
         // Setup
         let contracts = array![CoreContract::Actions];
         let (mut world, _systems) = deploy_contracts(contracts);
         let initial_game = setup_four_player_betting_game(ref world);
-        
+
         // Get initial state
         let player_1_initial: Player = world.read_model(PLAYER_1());
         let initial_chips = player_1_initial.chips;
         let small_blind = initial_game.params.small_blind;
-        
+
         // Simulate round start (this would normally be called by _start_round)
         simulate_round_start(ref world);
-        
+
         // Verify small blind deduction
         let player_1_after: Player = world.read_model(PLAYER_1());
         let game_after: Game = world.read_model(1);
-        
+
         assert!(
             player_1_after.chips == initial_chips - small_blind.into(),
-            "Small blind should be deducted from player next to dealer"
+            "Small blind should be deducted from player next to dealer",
         );
         assert!(
             player_1_after.current_bet == small_blind.into(),
-            "Player's current bet should equal small blind"
+            "Player's current bet should equal small blind",
         );
         assert!(
-            *game_after.pots.at(0) == small_blind.into(),
-            "Pot should contain small blind amount"
+            *game_after.pots.at(0) == small_blind.into(), "Pot should contain small blind amount",
         );
         assert!(
             game_after.next_player == Option::Some(PLAYER_2()),
-            "Next player should be set to big blind player"
+            "Next player should be set to big blind player",
         );
     }
 
@@ -263,7 +257,7 @@ mod betting_flow_tests {
         let (mut world, systems) = deploy_contracts(contracts);
         setup_four_player_betting_game(ref world);
         simulate_round_start(ref world);
-        
+
         // Try to make small blind player (Player 1) play when it's Player 2's turn
         set_contract_address(PLAYER_1());
         systems.actions.check();
@@ -272,18 +266,20 @@ mod betting_flow_tests {
     /// Test 3: Betting between small blind and big blind should panic
     /// @guha-rahul
     #[test]
-    #[should_panic(expected: ("Raise amount should be > twice the small blind.", 'ENTRYPOINT_FAILED'))]
+    #[should_panic(
+        expected: ("Raise amount should be > twice the small blind.", 'ENTRYPOINT_FAILED'),
+    )]
     fn test_bet_between_small_and_big_blind_panics() {
         // Setup
         let contracts = array![CoreContract::Actions];
         let (mut world, systems) = deploy_contracts(contracts);
         setup_four_player_betting_game(ref world);
         simulate_round_start(ref world);
-        
+
         let game: Game = world.read_model(1);
         let small_blind = game.params.small_blind;
         let invalid_raise = small_blind.into() + 5; // Between small and big blind
-        
+
         // Player 2 (big blind player) tries to raise with invalid amount
         set_contract_address(PLAYER_2());
         systems.actions.raise(invalid_raise);
@@ -298,26 +294,26 @@ mod betting_flow_tests {
         let (mut world, systems) = deploy_contracts(contracts);
         setup_four_player_betting_game(ref world);
         simulate_round_start(ref world);
-        
+
         let game: Game = world.read_model(1);
         let _player_2_initial: Player = world.read_model(PLAYER_2());
         let big_blind = game.params.big_blind;
-        
+
         // Player 2 calls with big blind amount
         set_contract_address(PLAYER_2());
         systems.actions.call();
-        
+
         // Verify call worked
         let player_2_after: Player = world.read_model(PLAYER_2());
         let game_after: Game = world.read_model(1);
-        
+
         assert!(
             player_2_after.current_bet == big_blind.into(),
-            "Player's current bet should equal big blind after call"
+            "Player's current bet should equal big blind after call",
         );
         assert!(
             game_after.next_player == Option::Some(PLAYER_3()),
-            "Next player should be set to Player 3"
+            "Next player should be set to Player 3",
         );
     }
 
@@ -330,85 +326,87 @@ mod betting_flow_tests {
         let (mut world, systems) = deploy_contracts(contracts);
         setup_four_player_betting_game(ref world);
         simulate_round_start(ref world);
-        
+
         // Get initial state
         let game: Game = world.read_model(1);
         let player_2_initial: Player = world.read_model(PLAYER_2());
         let small_blind = game.params.small_blind;
         let big_blind = game.params.big_blind;
-        
+
         // Player 2 raises to an amount greater than big blind
         // The raise amount is the new total bet the player wants to make
         let raise_amount = big_blind.into() * 2; // Double the big blind
-        
+
         // Store initial values for verification
         let initial_chips = player_2_initial.chips;
         let initial_current_bet = player_2_initial.current_bet;
         let game_current_bet = game.current_bet; // This is the small blind amount
-        
+
         // Execute the raise
         set_contract_address(PLAYER_2());
         systems.actions.raise(raise_amount);
-        
+
         // Verify raise worked
         let player_2_after: Player = world.read_model(PLAYER_2());
         let game_after: Game = world.read_model(1);
-        
+
         // Based on the contract implementation:
         // 1. amount_to_call = game_current_bet - player.current_bet
         // 2. total_required = amount_to_call + no_of_chips (raise_amount)
         // 3. player.chips -= total_required
         // 4. player.current_bet += total_required
         // 5. game.current_bet = player.current_bet
-        
+
         let amount_to_call = game_current_bet - initial_current_bet;
         let total_required = amount_to_call + raise_amount;
         let expected_current_bet = initial_current_bet + total_required;
-        
+
         // Verify player's bet was set correctly
         assert!(
             player_2_after.current_bet == expected_current_bet,
-            "Player's current bet should be updated correctly"
+            "Player's current bet should be updated correctly",
         );
-        
+
         // Verify game's current bet was updated
         assert!(
             game_after.current_bet == expected_current_bet,
-            "Game current bet should match player's current bet"
+            "Game current bet should match player's current bet",
         );
-        
+
         // Verify the chips were deducted correctly
         let actual_chips_used = initial_chips - player_2_after.chips;
-        
+
         assert!(
             actual_chips_used == total_required,
-            "Player's chips should be reduced by the correct amount"
+            "Player's chips should be reduced by the correct amount",
         );
-        
+
         // Verify next player was set correctly
         assert!(
             game_after.next_player == Option::Some(PLAYER_3()),
-            "Next player should be set to Player 3"
+            "Next player should be set to Player 3",
         );
     }
 
     /// Test 6: Raise with amount less than or equal to big blind should panic
     /// @guha-rahul
     #[test]
-    #[should_panic(expected: ("Raise amount is less than the game's current bet.", 'ENTRYPOINT_FAILED'))]
+    #[should_panic(
+        expected: ("Raise amount is less than the game's current bet.", 'ENTRYPOINT_FAILED'),
+    )]
     fn test_raise_less_than_big_blind_panics() {
         // Setup
         let contracts = array![CoreContract::Actions];
         let (mut world, systems) = deploy_contracts(contracts);
         setup_four_player_betting_game(ref world);
         simulate_round_start(ref world);
-        
+
         let game: Game = world.read_model(1);
         let small_blind = game.params.small_blind;
-        
+
         // Try to raise with an amount less than the current bet (small blind)
         let invalid_raise = small_blind.into() - 5;
-        
+
         // Player 2 tries to raise with invalid amount
         set_contract_address(PLAYER_2());
         systems.actions.raise(invalid_raise);
@@ -424,60 +422,51 @@ mod betting_flow_tests {
         let contracts = array![CoreContract::Actions];
         let (mut world, _systems) = deploy_contracts(contracts);
         setup_four_player_betting_game(ref world);
-        
+
         // Set up scenario: Players 1-3 have equal bets of 50, Player 4 raises to 70
         // We'll set this up manually instead of using the actions
         let mut player_1: Player = world.read_model(PLAYER_1());
         let mut player_2: Player = world.read_model(PLAYER_2());
         let mut player_3: Player = world.read_model(PLAYER_3());
         let mut player_4: Player = world.read_model(PLAYER_4());
-        
+
         player_1.current_bet = 50;
-        player_1.chips = 950;  // Started with 1000, bet 50
-        
+        player_1.chips = 950; // Started with 1000, bet 50
+
         player_2.current_bet = 50;
         player_2.chips = 1950; // Started with 2000, bet 50
-        
+
         player_3.current_bet = 50;
-        player_3.chips = 55;   // Started with 1500, bet 50, only 55 left
-        
+        player_3.chips = 55; // Started with 1500, bet 50, only 55 left
+
         player_4.current_bet = 70;
         player_4.chips = 4930; // Started with 5000, bet 70
-        
+
         let mut game: Game = world.read_model(1);
         game.current_bet = 70;
         game.pots = array![220]; // 50 + 50 + 50 + 70 = 220
-        
+
         world.write_models(array![@player_1, @player_2, @player_3, @player_4].span());
         world.write_model(@game);
-        
+
         // Now player_3 goes all-in with remaining 55 chips
         player_3.chips = 0;
         player_3.current_bet += 55; // Now 105 total
         player_3.in_round = true;
-        
+
         // Create a new pot for the amount above what player_3 could match
         let main_pot = 220 + 55; // Original pot + player_3's all-in
         game.pots = array![main_pot];
-        
+
         world.write_model(@player_3);
         world.write_model(@game);
-        
+
         // Verify player 3's state after all-in
         let player_3_after: Player = world.read_model(PLAYER_3());
-        
-        assert!(
-            player_3_after.chips == 0,
-            "Player 3 should have 0 chips after all-in"
-        );
-        assert!(
-            player_3_after.in_round,
-            "Player 3 should still be in round after all-in"
-        );
-        assert!(
-            player_3_after.is_in_game(1),
-            "Player 3 should still be in game after all-in"
-        );
+
+        assert!(player_3_after.chips == 0, "Player 3 should have 0 chips after all-in");
+        assert!(player_3_after.in_round, "Player 3 should still be in round after all-in");
+        assert!(player_3_after.is_in_game(1), "Player 3 should still be in game after all-in");
     }
 
     /// Test 8: Betting round continues when bets are not matched
@@ -488,35 +477,32 @@ mod betting_flow_tests {
         let contracts = array![CoreContract::Actions];
         let (mut world, _systems) = deploy_contracts(contracts);
         setup_four_player_betting_game(ref world);
-        
+
         // Set up unmatched bets scenario
         let mut player_1: Player = world.read_model(PLAYER_1());
         let mut player_2: Player = world.read_model(PLAYER_2());
         let mut player_3: Player = world.read_model(PLAYER_3());
         let mut player_4: Player = world.read_model(PLAYER_4());
-        
+
         player_1.current_bet = 50;
         player_2.current_bet = 50;
         player_3.current_bet = 50;
         player_4.current_bet = 70; // Different bet amount
-        
+
         let mut game: Game = world.read_model(1);
         game.current_bet = 70;
         game.next_player = Option::Some(PLAYER_1());
-        
+
         world.write_models(array![@player_1, @player_2, @player_3, @player_4].span());
         world.write_model(@game);
-        
+
         // Verify that betting round should continue
         let game_state: Game = world.read_model(1);
         assert!(
             game_state.next_player.is_some(),
-            "Betting round should continue when bets are not matched"
+            "Betting round should continue when bets are not matched",
         );
-        assert!(
-            !game_state.showdown,
-            "Game should not be in showdown when bets are unmatched"
-        );
+        assert!(!game_state.showdown, "Game should not be in showdown when bets are unmatched");
     }
 
     /// Test 9: Next player should skip all-in player
@@ -527,32 +513,32 @@ mod betting_flow_tests {
         let contracts = array![CoreContract::Actions];
         let (mut world, _systems) = deploy_contracts(contracts);
         setup_four_player_betting_game(ref world);
-        
+
         // Set Player 3 as all-in (0 chips, but still in round)
         let mut player_3: Player = world.read_model(PLAYER_3());
         player_3.chips = 0;
         player_3.current_bet = 55; // All-in amount
         player_3.in_round = true; // Still in round
         world.write_model(@player_3);
-        
+
         // Set next player to Player 2
         let mut game: Game = world.read_model(1);
         game.next_player = Option::Some(PLAYER_2());
-        
+
         // Set Player 4 as next after Player 3
         game.players = array![PLAYER_1(), PLAYER_2(), PLAYER_3(), PLAYER_4()];
         world.write_model(@game);
-        
+
         // Manually simulate after_play logic to find next active player
         // In a real game, this would happen after Player 2 makes a move
-        
+
         // We expect the next player to be Player 4, skipping Player 3 (all-in)
         let expected_next_player = Option::Some(PLAYER_4());
-        
+
         // Verify next player is not Player 3
         assert!(
             expected_next_player != Option::Some(PLAYER_3()),
-            "Next player should not be the all-in player"
+            "Next player should not be the all-in player",
         );
     }
 
@@ -565,17 +551,17 @@ mod betting_flow_tests {
         let contracts = array![CoreContract::Actions];
         let (mut world, systems) = deploy_contracts(contracts);
         setup_four_player_betting_game(ref world);
-        
+
         // Set Player 3 as all-in
         let mut player_3: Player = world.read_model(PLAYER_3());
         player_3.chips = 0; // All-in
         player_3.in_round = true; // Still in round
         world.write_model(@player_3);
-        
+
         let mut game: Game = world.read_model(1);
         game.next_player = Option::Some(PLAYER_3()); // Force Player 3 to be next
         world.write_model(@game);
-        
+
         // Try to make Player 3 play - should panic due to no chips
         set_contract_address(PLAYER_3());
         systems.actions.check();
@@ -589,27 +575,18 @@ mod betting_flow_tests {
         let contracts = array![CoreContract::Actions];
         let (mut world, _systems) = deploy_contracts(contracts);
         setup_four_player_betting_game(ref world);
-        
+
         // Manually set player to all-in state
         let mut player_3: Player = world.read_model(PLAYER_3());
         player_3.chips = 0;
         player_3.in_round = true;
         world.write_model(@player_3);
-        
+
         // Verify Player 3's state after all-in
         let player_3_after: Player = world.read_model(PLAYER_3());
-        
-        assert!(
-            player_3_after.chips == 0,
-            "Player should have 0 chips after all-in"
-        );
-        assert!(
-            player_3_after.in_round,
-            "Player should still be in round after all-in"
-        );
-        assert!(
-            player_3_after.is_in_game(1),
-            "Player should still be in game after all-in"
-        );
+
+        assert!(player_3_after.chips == 0, "Player should have 0 chips after all-in");
+        assert!(player_3_after.in_round, "Player should still be in round after all-in");
+        assert!(player_3_after.is_in_game(1), "Player should still be in game after all-in");
     }
-} 
+}

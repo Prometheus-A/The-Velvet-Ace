@@ -331,8 +331,9 @@ mod betting_flow_tests {
         setup_four_player_betting_game(ref world);
         simulate_round_start(ref world);
         
+        // Get initial state
         let game: Game = world.read_model(1);
-        let _player_2_initial: Player = world.read_model(PLAYER_2());
+        let player_2_initial: Player = world.read_model(PLAYER_2());
         let small_blind = game.params.small_blind;
         let big_blind = game.params.big_blind;
         
@@ -350,7 +351,16 @@ mod betting_flow_tests {
         // The player's current bet should be the raise amount
         // The total chips deducted should be raise_amount - small_blind (since small blind is the current bet)
         let expected_bet = raise_amount;
-        let expected_deduction = raise_amount - small_blind.into();
+        let _expected_deduction = raise_amount - small_blind.into();
+        
+        // Check that player's chips were reduced correctly
+        let chips_used = player_2_initial.chips - player_2_after.chips;
+        let expected_chips_used = raise_amount - small_blind.into();
+        
+        assert!(
+            chips_used == expected_chips_used,
+            "Player's chips should be reduced by the raise amount minus the current bet"
+        );
         
         assert!(
             player_2_after.current_bet == expected_bet,

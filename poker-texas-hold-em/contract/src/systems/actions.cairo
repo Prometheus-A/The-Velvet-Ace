@@ -1,17 +1,15 @@
 /// POKER CONTRACT
 #[dojo::contract]
 pub mod actions {
-    use core::num::traits::Zero;
     use core::ecdsa::{check_ecdsa_signature, recover_public_key};
+    use core::num::traits::Zero;
     use core::poseidon::poseidon_hash_span;
-    use starknet::{ContractAddress, get_caller_address, get_contract_address, get_block_timestamp};
-
     use dojo::event::EventStorage;
     use dojo::model::{Model, ModelStorage, ModelValueStorage};
     use dojo::world::WorldStorage;
     use poker::models::base::{
-        CardDealt, GameConcluded, GameErrors, GameInitialized, HandCreated, HandResolved, Id,
-        PlayerJoined, PlayerLeft, RoundResolved, RoundStarted, RoundEnded, CommunityCardDealt,
+        CardDealt, CommunityCardDealt, GameConcluded, GameErrors, GameInitialized, HandCreated,
+        HandResolved, Id, PlayerJoined, PlayerLeft, RoundEnded, RoundResolved, RoundStarted,
     };
     use poker::models::card::{Card, CardTrait};
     use poker::models::deck::{Deck, DeckTrait};
@@ -21,6 +19,7 @@ pub mod actions {
     use poker::models::hand::{Hand, HandTrait, Proofs};
     use poker::models::player::{Player, PlayerTrait};
     use poker::traits::game::get_default_game_params;
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
     use crate::systems::interface::IActions;
     use crate::utils::deck::verify_game;
 
@@ -155,7 +154,7 @@ pub mod actions {
                     if p.is_in_game(game_id) {
                         players.append(c);
                     }
-                };
+                }
                 game.players = players;
                 game.reshuffled += 1;
             }
@@ -250,7 +249,7 @@ pub mod actions {
             while i != game_pots.len() - 1 {
                 updated_game_pots.append(*game_pots.at(i));
                 i += 1;
-            };
+            }
             updated_game_pots.append(game_pot);
 
             world.write_model(@player);
@@ -319,7 +318,7 @@ pub mod actions {
             while i != game_pots.len() - 1 {
                 updated_game_pots.append(*game_pots.at(i));
                 i += 1;
-            };
+            }
             updated_game_pots.append(game_pot);
 
             world.write_model(@player);
@@ -631,7 +630,7 @@ pub mod actions {
                         world.write_member(Model::<Game>::ptr_from_keys(game_id), po, offset);
                     }
                 }
-            };
+            }
 
             if new_pot_ {
                 game_pots.append(new_pot);
@@ -660,7 +659,7 @@ pub mod actions {
                     break; // usually the last two. break afterwards
                 }
                 game_pots_ref.append(*game_pots.at(i));
-            };
+            }
             game_pots_ref
         }
 
@@ -855,7 +854,7 @@ pub mod actions {
                     break;
                 }
                 i += 1;
-            };
+            }
             result
         }
 
@@ -881,7 +880,7 @@ pub mod actions {
                 }
                 next_index = (next_index + 1) % num_players;
                 attempts += 1;
-            };
+            }
             result
         }
 
@@ -922,7 +921,7 @@ pub mod actions {
                     break;
                 }
                 i += 1;
-            };
+            }
 
             // If no dealer is found, return None
             if !found {
@@ -1026,19 +1025,19 @@ pub mod actions {
                     player.eligible_pots = 0;
                     world.write_model(@player);
                 }
-            };
+            }
 
             let (winning_hands, _) = self._extract_winner();
             let mut winners = array![];
             for i in 0..winning_hands.len() {
                 let winner = winning_hands.at(i);
                 winners.append(*winner.player);
-            };
+            }
 
             let mut tpot = 0; // total pot
             for pot in game.pots {
                 tpot += pot;
-            };
+            }
 
             let round_resolved = RoundResolved {
                 game_id: game_id, can_join: can_join, winners: winners, pot: tpot,
@@ -1078,7 +1077,7 @@ pub mod actions {
                 assert(*player_game_id == game_id, 'Players in different games');
 
                 i += 1;
-            };
+            }
 
             let mut world = self.world_default();
             let mut game: Game = world.read_model(game_id);
@@ -1092,7 +1091,7 @@ pub mod actions {
                 deck.new_deck();
                 deck.shuffle();
                 world.write_model(@deck); // should work, I guess.
-            };
+            }
 
             // Array of all the players
             let mut resolved_players = ArrayTrait::new();
@@ -1115,7 +1114,7 @@ pub mod actions {
 
                 world.write_model(@hand);
                 j += 1;
-            };
+            }
 
             world.emit_event(@HandResolved { game_id: game_id, players: resolved_players });
         }
@@ -1250,7 +1249,7 @@ pub mod actions {
                     break;
                 }
                 i += 1;
-            };
+            }
 
             // player to the right, small blind, then that's all.
             // set the next_player accordingly
@@ -1290,10 +1289,74 @@ pub mod actions {
                     },
                 )
         }
-
+        
+        // @ryzen_xp
         // extracts the winning hands
-        fn _extract_winner(ref self: ContractState) -> (Array<Hand>, Option<Array<Card>>) {
-            (array![], Option::None)
+        fn _extract_winner(
+            ref self: ContractState, game_id: u64, community_cards: Array<Card>,
+        ) -> (Array<Hand>, Array<Card>) {
+            let mut world = self.world_default();
+            let game: Game = world.read_model(game_id);
+
+            // Collect all Killer hands from Gang(players) still in  round ! Ooo Yyya!
+            let mut active_hands: Array<Hand> = array![];
+            let mut hand_rankings: Array<(Hand, u8, Array<Card>)> = array![];
+
+            for player_address in game.players.span() {
+                let player: Player = world.read_model(*player_address);
+                if player.in_round && player.is_in_game(game_id) {
+                    let hand: Hand = world.read_model(*player_address);
+
+                    // Skip players with empty hands (they didn't submit cards)
+                    if hand.cards.len() == 0 {
+                        continue;
+                    }
+
+                    active_hands.append(hand);
+
+                    // Get hand ranking and kicker cards
+                    let (rank_value, rank_description) = hand.rank(community_cards.clone());
+                    // For now, we'll extract kicker cards as the community cards
+                    // This should be updated based on the actual HandTrait implementation
+                    hand_rankings.append((hand, rank_value, community_cards.clone()));
+                }
+            }
+
+            assert(active_hands.len() > 0, 'No_valid_hands_to_compare');
+
+            // Find the best hand rank OOoo Yyya!!!
+            let mut best_rank: u8 = 255; // starting with my  worth case rank
+            let mut i = 0;
+            while i < hand_rankings.len() {
+                let (_, rank, _) = hand_rankings.at(i);
+                if *rank < best_rank {
+                    best_rank = *rank;
+                }
+                i += 1;
+            }
+
+            // Collecting  all Killer hands with the best muder rank !! Ooo Yyya!
+            let mut winning_hands: Array<Hand> = array![];
+            let mut kicker_cards: Array<Card> = array![];
+
+            i = 0;
+            while i < hand_rankings.len() {
+                let (hand, rank, kickers) = hand_rankings.at(i);
+                if *rank == best_rank {
+                    winning_hands.append(*hand);
+                    // If this is the first winner, set the kicker cards
+                    if kicker_cards.len() == 0 {
+                        kicker_cards = kickers.clone();
+                    }
+                }
+                i += 1;
+            }
+
+            if winning_hands.len() > 1 {
+                kicker_cards = array![];
+            }
+
+            (winning_hands, kicker_cards)
         }
     }
 }

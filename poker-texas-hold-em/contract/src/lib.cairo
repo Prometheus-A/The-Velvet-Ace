@@ -31,6 +31,7 @@ mod tests {
     mod erc20;
     mod setup;
     mod test_actions;
+    mod test_betting_flow;
     mod test_hand_compare;
     mod test_hand_rank;
     mod test_world;

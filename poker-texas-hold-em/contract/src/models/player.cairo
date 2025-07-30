@@ -69,256 +69,84 @@ mod tests {
     use starknet::ContractAddress;
     use starknet::testing::{set_account_contract_address, set_contract_address};
 
-    fn PLAYER_1() -> ContractAddress {
-        starknet::contract_address_const::<'PLAYER_1'>()
-    }
-
-    fn PLAYER_2() -> ContractAddress {
-        starknet::contract_address_const::<'PLAYER_2'>()
-    }
-
-    fn PLAYER_3() -> ContractAddress {
-        starknet::contract_address_const::<'PLAYER_3'>()
-    }
-
-    fn PLAYER_4() -> ContractAddress {
-        starknet::contract_address_const::<'PLAYER_4'>()
-    }
-
-    fn mock_poker_game(ref world: WorldStorage) {
-        let game = Game {
-            id: 1,
-            in_progress: true,
-            has_ended: false,
-            current_round: 1,
-            round_in_progress: true,
-            current_player_count: 2,
-            players: array![PLAYER_1(), PLAYER_2(), PLAYER_3()],
-            deck: array![],
-            next_player: Option::Some(PLAYER_1()),
-            community_cards: array![],
-            pots: array![0],
-            current_bet: 0,
-            params: get_default_game_params(),
-            reshuffled: 0,
-            should_end: false,
-            deck_root: 0,
-            dealt_cards_root: 0,
-            nonce: 0,
-            community_dealing: false,
-            showdown: false,
-            round_count: 0,
-            highest_staker: Option::None,
-            previous_offset: 0,
-        };
-
-        let player_1 = Player {
-            id: PLAYER_1(),
-            alias: 'dub_zn',
-            chips: 2000,
-            current_bet: 0,
-            total_rounds: 1,
-            locked: (true, 1),
-            is_dealer: false,
-            in_round: true,
-            out: (0, 0),
-            pub_key: 0x1,
-            locked_chips: 0,
-            is_blacklisted: false,
-            eligible_pots: 1,
-        };
-
-        let player_2 = Player {
-            id: PLAYER_2(),
-            alias: 'Birdmannn',
-            chips: 5000,
-            current_bet: 0,
-            total_rounds: 1,
-            locked: (true, 2),
-            is_dealer: false,
-            in_round: true,
-            out: (0, 0),
-            pub_key: 0x2,
-            locked_chips: 0,
-            is_blacklisted: false,
-            eligible_pots: 1,
-        };
-
-        let player_3 = Player {
-            id: PLAYER_3(),
-            alias: 'chiscookeke11',
-            chips: 5000,
-            current_bet: 0,
-            total_rounds: 1,
-            locked: (false, 1),
-            is_dealer: false,
-            in_round: true,
-            out: (0, 0),
-            pub_key: 0x3,
-            locked_chips: 0,
-            is_blacklisted: false,
-            eligible_pots: 1,
-        };
-
-        world.write_model(@game);
-        world.write_models(array![@player_1, @player_2, @player_3].span());
-    }
+    use crate::tests::test_actions::tests::{PLAYER_1, PLAYER_2, PLAYER_3, PLAYER_4, mock_poker_game, mock_player, mock_poker_game_flex};
 
     fn mock_allowable_game(ref world: WorldStorage) {
-        let game = Game {
-            id: 2,
-            in_progress: true,
-            has_ended: false,
-            current_round: 1,
-            round_in_progress: false,
-            current_player_count: 2,
-            players: array![PLAYER_1(), PLAYER_2(), PLAYER_3()],
-            deck: array![],
-            next_player: Option::Some(PLAYER_1()),
-            community_cards: array![],
-            pots: array![0],
-            current_bet: 0,
-            params: get_default_game_params(),
-            reshuffled: 0,
-            should_end: false,
-            deck_root: 0,
-            dealt_cards_root: 0,
-            nonce: 0,
-            community_dealing: false,
-            showdown: false,
-            round_count: 0,
-            highest_staker: Option::None,
-            previous_offset: 0,
-        };
-
-        let player_1 = Player {
-            id: PLAYER_1(),
-            alias: 'dub_zn',
-            chips: 2000,
-            current_bet: 0,
-            total_rounds: 1,
-            locked: (true, 1),
-            is_dealer: false,
-            in_round: true,
-            out: (0, 0),
-            pub_key: 0x1,
-            locked_chips: 0,
-            is_blacklisted: false,
-            eligible_pots: 1,
-        };
-
-        let player_2 = Player {
-            id: PLAYER_2(),
-            alias: 'Birdmannn',
-            chips: 5000,
-            current_bet: 0,
-            total_rounds: 1,
-            locked: (true, 2),
-            is_dealer: false,
-            in_round: true,
-            out: (0, 0),
-            pub_key: 0x2,
-            locked_chips: 0,
-            is_blacklisted: false,
-            eligible_pots: 1,
-        };
-
-        let player_3 = Player {
-            id: PLAYER_3(),
-            alias: 'chiscookeke11',
-            chips: 5000,
-            current_bet: 0,
-            total_rounds: 1,
-            locked: (false, 1),
-            is_dealer: false,
-            in_round: true,
-            out: (0, 0),
-            pub_key: 0x3,
-            locked_chips: 0,
-            is_blacklisted: false,
-            eligible_pots: 1,
-        };
-
-        world.write_model(@game);
-        world.write_models(array![@player_1, @player_2, @player_3].span());
+        let player_1 = mock_player(
+            PLAYER_1(), 'dub_zn', 2000, 0, 1, (true, 1), false, true, (0, 0), 0x1, 0, false, 1
+        );
+        let player_2 = mock_player(
+            PLAYER_2(), 'Birdmannn', 5000, 0, 1, (true, 2), false, true, (0, 0), 0x2, 0, false, 1
+        );
+        let player_3 = mock_player(
+            PLAYER_3(), 'chiscookeke11', 5000, 0, 1, (false, 1), false, true, (0, 0), 0x3, 0, false, 1
+        );
+        mock_poker_game_flex(
+            ref world,
+            2,
+            true,
+            false,
+            1,
+            false,
+            2,
+            array![PLAYER_1(), PLAYER_2(), PLAYER_3()],
+            array![],
+            Option::Some(PLAYER_1()),
+            array![],
+            array![0],
+            0,
+            get_default_game_params(),
+            0, false, 0, 0, 0, false, false, 0, Option::None, 0,
+            array![player_1, player_2, player_3]
+        );
     }
 
     fn mock_unlocked_player() -> Player {
-        Player {
-            id: PLAYER_4(),
-            alias: 'Nobody',
-            chips: 5000,
-            current_bet: 0,
-            total_rounds: 1,
-            locked: (false, 1),
-            is_dealer: false,
-            in_round: true,
-            out: (0, 0),
-            pub_key: 0x3,
-            locked_chips: 0,
-            is_blacklisted: false,
-            eligible_pots: 1,
-        }
+        mock_player(
+            PLAYER_4(), 'Nobody', 5000, 0, 1, (false, 1), false, true, (0, 0), 0x3, 0, false, 1
+        )
     }
 
     fn mock_uninitialized_game(ref world: WorldStorage) {
-        let game = Game {
-            id: 3,
-            in_progress: false,
-            has_ended: false,
-            current_round: 0,
-            round_in_progress: false,
-            current_player_count: 0,
-            players: array![],
-            deck: array![],
-            next_player: Option::None,
-            community_cards: array![],
-            pots: array![],
-            current_bet: 0,
-            params: get_default_game_params(),
-            reshuffled: 0,
-            should_end: false,
-            deck_root: 0,
-            dealt_cards_root: 0,
-            nonce: 0,
-            community_dealing: false,
-            showdown: false,
-            round_count: 0,
-            highest_staker: Option::None,
-            previous_offset: 0,
-        };
-
-        world.write_model(@game);
+        mock_poker_game_flex(
+            ref world,
+            3,
+            false,
+            false,
+            0,
+            false,
+            0,
+            array![],
+            array![],
+            Option::None,
+            array![],
+            array![],
+            0,
+            get_default_game_params(),
+            0, false, 0, 0, 0, false, false, 0, Option::None, 0,
+            array![]
+        );
     }
 
     fn mock_ended_game(ref world: WorldStorage) {
-        let game = Game {
-            id: 4,
-            in_progress: false,
-            has_ended: true,
-            current_round: 0,
-            round_in_progress: false,
-            current_player_count: 0,
-            players: array![PLAYER_1()],
-            deck: array![],
-            next_player: Option::None,
-            community_cards: array![],
-            pots: array![],
-            current_bet: 0,
-            params: get_default_game_params(),
-            reshuffled: 0,
-            should_end: false,
-            deck_root: 0,
-            dealt_cards_root: 0,
-            nonce: 0,
-            community_dealing: false,
-            showdown: false,
-            round_count: 0,
-            highest_staker: Option::None,
-            previous_offset: 0,
-        };
-
-        world.write_model(@game);
+        mock_poker_game_flex(
+            ref world,
+            4,
+            false,
+            true,
+            0,
+            false,
+            0,
+            array![PLAYER_1()],
+            array![],
+            Option::None,
+            array![],
+            array![],
+            0,
+            get_default_game_params(),
+            0, false, 0, 0, 0, false, false, 0, Option::None, 0,
+            array![]
+        );
     }
 
     #[test]
@@ -372,6 +200,7 @@ mod tests {
         mock_poker_game(ref world);
         let mut game: Game = world.read_model(1);
         let mut player: Player = world.read_model(PLAYER_3());
+        player.locked = (false, 0);
 
         player.exit(ref game, true);
     }
@@ -420,6 +249,7 @@ mod tests {
         mock_poker_game(ref world);
         let mut game: Game = world.read_model(1);
         let mut player: Player = world.read_model(PLAYER_2());
+        player.locked = (true, 999);
 
         player.exit(ref game, true);
     }

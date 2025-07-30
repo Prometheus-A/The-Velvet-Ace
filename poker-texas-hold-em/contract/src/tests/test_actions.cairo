@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use dojo::event::EventStorageTest;
     use dojo_cairo_test::WorldStorageTestTrait;
     use dojo::model::{ModelStorage, ModelValueStorage, ModelStorageTest};
@@ -7,7 +7,8 @@ mod tests {
     use dojo_cairo_test::{
         spawn_test_world, NamespaceDef, TestResource, ContractDefTrait, ContractDef,
     };
-    use poker::models::game::{Game, GameTrait};
+    use poker::models::game::{Game, GameTrait, GameParams, ShowdownType};
+    use poker::models::card::{Card};
     use poker::models::player::{Player, PlayerTrait};
     use poker::traits::game::get_default_game_params;
     use poker::systems::interface::{IActionsDispatcher, IActionsDispatcherTrait};
@@ -15,16 +16,115 @@ mod tests {
     use starknet::ContractAddress;
     use starknet::testing::{set_account_contract_address, set_contract_address};
 
-    fn PLAYER_1() -> ContractAddress {
+    pub fn PLAYER_1() -> ContractAddress {
         starknet::contract_address_const::<'PLAYER_1'>()
     }
 
-    fn PLAYER_2() -> ContractAddress {
+    pub fn PLAYER_2() -> ContractAddress {
         starknet::contract_address_const::<'PLAYER_2'>()
     }
 
-    fn PLAYER_3() -> ContractAddress {
+    pub fn PLAYER_3() -> ContractAddress {
         starknet::contract_address_const::<'PLAYER_3'>()
+    }
+
+    pub fn PLAYER_4() -> ContractAddress {
+        starknet::contract_address_const::<'PLAYER_4'>()
+    }
+
+    // Flexible player mock
+    pub fn mock_player(
+        id: ContractAddress,
+        alias: felt252,
+        chips: u256,
+        current_bet: u256,
+        total_rounds: u64,
+        locked: (bool, u64),
+        is_dealer: bool,
+        in_round: bool,
+        out: (u64, u64),
+        pub_key: felt252,
+        locked_chips: u256,
+        is_blacklisted: bool,
+        eligible_pots: u8,
+    ) -> Player {
+        Player {
+            id,
+            alias,
+            chips,
+            current_bet,
+            total_rounds,
+            locked,
+            is_dealer,
+            in_round,
+            out,
+            pub_key,
+            locked_chips,
+            is_blacklisted,
+            eligible_pots,
+        }
+    }
+
+    // Flexible game mock
+    pub fn mock_poker_game_flex(
+        ref world: WorldStorage,
+        id: u64,
+        in_progress: bool,
+        has_ended: bool,
+        current_round: u8,
+        round_in_progress: bool,
+        current_player_count: u32,
+        players: Array<ContractAddress>,
+        deck: Array<u64>,
+        next_player: Option<ContractAddress>,
+        community_cards: Array<Card>,
+        pots: Array<u256>,
+        current_bet: u256,
+        params: GameParams,
+        reshuffled: u64,
+        should_end: bool,
+        deck_root: felt252,
+        dealt_cards_root: felt252,
+        nonce: u64,
+        community_dealing: bool,
+        showdown: bool,
+        round_count: u64,
+        highest_staker: Option<ContractAddress>,
+        previous_offset: u256,
+        player_states: Array<Player>,
+    ) {
+        let temp_player_states = player_states.span();
+        let mut player_states = array![];
+        for player in temp_player_states {
+            player_states.append(player);
+        };
+        let game = Game {
+            id,
+            in_progress,
+            has_ended,
+            current_round,
+            round_in_progress,
+            current_player_count,
+            players,
+            deck,
+            next_player,
+            community_cards,
+            pots,
+            current_bet,
+            params,
+            reshuffled,
+            should_end,
+            deck_root,
+            dealt_cards_root,
+            nonce,
+            community_dealing,
+            showdown,
+            round_count,
+            highest_staker,
+            previous_offset,
+        };
+        world.write_model(@game);
+        world.write_models(player_states.span());
     }
 
     // [Actions] - check() tests
@@ -343,82 +443,34 @@ mod tests {
     }
 
     // [Mocks]
-    fn mock_poker_game(ref world: WorldStorage) {
-        let game = Game {
-            id: 1,
-            in_progress: true,
-            has_ended: false,
-            current_round: 1,
-            round_in_progress: true,
-            current_player_count: 2,
-            players: array![PLAYER_1(), PLAYER_2(), PLAYER_3()],
-            deck: array![],
-            next_player: Option::Some(PLAYER_1()),
-            community_cards: array![],
-            pots: array![0],
-            current_bet: 0,
-            params: get_default_game_params(),
-            reshuffled: 0,
-            should_end: false,
-            deck_root: 0,
-            dealt_cards_root: 0,
-            nonce: 0,
-            community_dealing: false,
-            showdown: false,
-            round_count: 0,
-            highest_staker: Option::None,
-            previous_offset: 0,
-        };
-
-        let player_1 = Player {
-            id: PLAYER_1(),
-            alias: 'dub_zn',
-            chips: 2000,
-            current_bet: 0,
-            total_rounds: 1,
-            locked: (true, 1),
-            is_dealer: false,
-            in_round: true,
-            out: (0, 0),
-            pub_key: 0x1,
-            locked_chips: 0,
-            is_blacklisted: false,
-            eligible_pots: 1,
-        };
-
-        let player_2 = Player {
-            id: PLAYER_2(),
-            alias: 'Birdmannn',
-            chips: 5000,
-            current_bet: 0,
-            total_rounds: 1,
-            locked: (true, 1),
-            is_dealer: false,
-            in_round: true,
-            out: (0, 0),
-            pub_key: 0x2,
-            locked_chips: 0,
-            is_blacklisted: false,
-            eligible_pots: 1,
-        };
-
-        let player_3 = Player {
-            id: PLAYER_3(),
-            alias: 'chiscookeke11',
-            chips: 5000,
-            current_bet: 0,
-            total_rounds: 1,
-            locked: (true, 1),
-            is_dealer: false,
-            in_round: true,
-            out: (0, 0),
-            pub_key: 0x3,
-            locked_chips: 0,
-            is_blacklisted: false,
-            eligible_pots: 1,
-        };
-
-        world.write_model(@game);
-        world.write_models(array![@player_1, @player_2, @player_3].span());
+    // Default mock usage for legacy tests
+    pub fn mock_poker_game(ref world: WorldStorage) {
+        let player_1 = mock_player(
+            PLAYER_1(), 'dub_zn', 2000, 0, 1, (true, 1), false, true, (0, 0), 0x1, 0, false, 1
+        );
+        let player_2 = mock_player(
+            PLAYER_2(), 'Birdmannn', 5000, 0, 1, (true, 1), false, true, (0, 0), 0x2, 0, false, 1
+        );
+        let player_3 = mock_player(
+            PLAYER_3(), 'chiscookeke11', 5000, 0, 1, (true, 1), false, true, (0, 0), 0x3, 0, false, 1
+        );
+        mock_poker_game_flex(
+            ref world,
+            1, // id
+            true, // in_progress
+            false, // has_ended
+            1, // current_round
+            true, // round_in_progress
+            2, // current_player_count
+            array![PLAYER_1(), PLAYER_2(), PLAYER_3()],
+            array![],
+            Option::Some(PLAYER_1()),
+            array![],
+            array![0],
+            0,
+            get_default_game_params(),
+            0, false, 0, 0, 0, false, false, 0, Option::None, 0,
+            array![player_1, player_2, player_3]
+        );
     }
 }

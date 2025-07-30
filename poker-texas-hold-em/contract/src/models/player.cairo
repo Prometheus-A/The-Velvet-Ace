@@ -69,17 +69,31 @@ mod tests {
     use starknet::ContractAddress;
     use starknet::testing::{set_account_contract_address, set_contract_address};
 
-    use crate::tests::test_actions::tests::{PLAYER_1, PLAYER_2, PLAYER_3, PLAYER_4, mock_poker_game, mock_player, mock_poker_game_flex};
+    use crate::tests::test_actions::tests::{
+        PLAYER_1, PLAYER_2, PLAYER_3, PLAYER_4, mock_poker_game, mock_player, mock_poker_game_flex,
+    };
 
     fn mock_allowable_game(ref world: WorldStorage) {
         let player_1 = mock_player(
-            PLAYER_1(), 'dub_zn', 2000, 0, 1, (true, 1), false, true, (0, 0), 0x1, 0, false, 1
+            PLAYER_1(), 'dub_zn', 2000, 0, 1, (true, 1), false, true, (0, 0), 0x1, 0, false, 1,
         );
         let player_2 = mock_player(
-            PLAYER_2(), 'Birdmannn', 5000, 0, 1, (true, 2), false, true, (0, 0), 0x2, 0, false, 1
+            PLAYER_2(), 'Birdmannn', 5000, 0, 1, (true, 2), false, true, (0, 0), 0x2, 0, false, 1,
         );
         let player_3 = mock_player(
-            PLAYER_3(), 'chiscookeke11', 5000, 0, 1, (false, 1), false, true, (0, 0), 0x3, 0, false, 1
+            PLAYER_3(),
+            'chiscookeke11',
+            5000,
+            0,
+            1,
+            (false, 1),
+            false,
+            true,
+            (0, 0),
+            0x3,
+            0,
+            false,
+            1,
         );
         mock_poker_game_flex(
             ref world,
@@ -96,14 +110,23 @@ mod tests {
             array![0],
             0,
             get_default_game_params(),
-            0, false, 0, 0, 0, false, false, 0, Option::None, 0,
-            array![player_1, player_2, player_3]
+            0,
+            false,
+            0,
+            0,
+            0,
+            false,
+            false,
+            0,
+            Option::None,
+            0,
+            array![player_1, player_2, player_3],
         );
     }
 
     fn mock_unlocked_player() -> Player {
         mock_player(
-            PLAYER_4(), 'Nobody', 5000, 0, 1, (false, 1), false, true, (0, 0), 0x3, 0, false, 1
+            PLAYER_4(), 'Nobody', 5000, 0, 1, (false, 1), false, true, (0, 0), 0x3, 0, false, 1,
         )
     }
 
@@ -123,8 +146,17 @@ mod tests {
             array![],
             0,
             get_default_game_params(),
-            0, false, 0, 0, 0, false, false, 0, Option::None, 0,
-            array![]
+            0,
+            false,
+            0,
+            0,
+            0,
+            false,
+            false,
+            0,
+            Option::None,
+            0,
+            array![],
         );
     }
 
@@ -144,8 +176,17 @@ mod tests {
             array![],
             0,
             get_default_game_params(),
-            0, false, 0, 0, 0, false, false, 0, Option::None, 0,
-            array![]
+            0,
+            false,
+            0,
+            0,
+            0,
+            false,
+            false,
+            0,
+            Option::None,
+            0,
+            array![],
         );
     }
 

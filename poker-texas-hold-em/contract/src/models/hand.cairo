@@ -67,24 +67,6 @@ impl HandRankU16 of Into<HandRank, u16> {
     }
 }
 
-impl HandRankU8 of Into<HandRank, u8> {
-    #[inline(always)]
-    fn into(self: HandRank) -> u8 {
-        match self {
-            HandRank::UNDEFINED => 0,
-            HandRank::HIGH_CARD => 1,
-            HandRank::ONE_PAIR => 2,
-            HandRank::TWO_PAIR => 3,
-            HandRank::THREE_OF_A_KIND => 4,
-            HandRank::STRAIGHT => 5,
-            HandRank::FLUSH => 6,
-            HandRank::FULL_HOUSE => 7,
-            HandRank::FOUR_OF_A_KIND => 8,
-            HandRank::STRAIGHT_FLUSH => 9,
-            HandRank::ROYAL_FLUSH => 10,
-        }
-    }
-}
 
 impl HandRankByteArray of Into<HandRank, ByteArray> {
     #[inline(always)]

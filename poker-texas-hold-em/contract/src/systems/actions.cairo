@@ -16,9 +16,9 @@ pub mod actions {
     use poker::models::game::{
         Game, GameMode, GameParams, GameStats, GameTrait, Salts, ShowdownType,
     };
-    use poker::models::hand::{Hand, HandTrait, Proofs};
+    use poker::models::hand::{Hand, HandTrait, Proofs, HandRank};
     use poker::models::player::{Player, PlayerTrait};
-    use poker::traits::game::get_default_game_params;
+    use poker::traits::{game::get_default_game_params, handtrait};
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
     use crate::systems::interface::IActions;
     use crate::utils::deck::verify_game;
@@ -1027,7 +1027,7 @@ pub mod actions {
                 }
             };
 
-            let (winning_hands, _) = self._extract_winner(game_id, community_cards);
+            let (winning_hands, _, _) = self._extract_winner(game_id, community_cards, hands);
             let mut winners = array![];
             for i in 0..winning_hands.len() {
                 let winner = winning_hands.at(i);
@@ -1293,70 +1293,46 @@ pub mod actions {
         // @ryzen_xp
         // extracts the winning hands
         fn _extract_winner(
-            ref self: ContractState, game_id: u64, community_cards: Array<Card>,
-        ) -> (Array<Hand>, Array<Card>) {
+            ref self: ContractState, game_id: u64, community_cards: Array<Card>, hands: Array<Hand>,
+        ) -> (Span<Hand>, HandRank, Span<Card>) {
             let mut world = self.world_default();
+
+            let players: Array<ContractAddress> = world
+                .read_member(Model::<Game>::ptr_from_keys(game_id), selector!("players"));
+
             let game: Game = world.read_model(game_id);
+            let game_params = game.params;
 
-            // Collect all Killer hands from Gang(players) still in  round ! Ooo Yyya!
+            // Filtering active hands from players still in round !!!
             let mut active_hands: Array<Hand> = array![];
-            let mut hand_rankings: Array<(Hand, u8, Array<Card>)> = array![];
 
-            for player_address in game.players.span() {
-                let player: Player = world.read_model(*player_address);
-                if player.in_round && player.is_in_game(game_id) {
-                    let hand: Hand = world.read_model(*player_address);
+            let mut i = 0;
+            while i < hands.len() {
+                let hand = hands.at(i);
 
-                    // Skip players with empty hands (they didn't submit cards)
-                    if hand.cards.len() == 0 {
-                        continue;
+                // checking if this hand belongs to a player still in the round !!
+                let mut j = 0;
+                while j < players.len() {
+                    let player_address = players.at(j);
+                    let player: Player = world.read_model(*player_address);
+
+                    if player.in_round
+                        && player.is_in_game(game_id)
+                        && hand.player == player_address {
+                        if hand.cards.len() > 0 {
+                            active_hands.append(hand.clone());
+                        }
+                        break;
                     }
+                    j += 1;
+                };
 
-                    active_hands.append(hand.clone());
-
-                    // Get hand ranking and kicker cards
-                    let (hand, hand_rank) = hand.rank(community_cards.clone());
-                    // For now, we'll extract kicker cards as the community cards
-                    // This should be updated based on the actual HandTrait implementation
-                    hand_rankings.append((hand, hand_rank.into(), community_cards.clone()));
-                }
+                i += 1;
             };
 
             assert(active_hands.len() > 0, 'No_valid_hands_to_compare');
 
-            // Find the best hand rank OOoo Yyya!!!
-            let mut best_rank: u8 = 255; // starting with my  worth case rank
-            let mut i = 0;
-            while i < hand_rankings.len() {
-                let (_, rank, _) = hand_rankings.at(i);
-                if *rank < best_rank {
-                    best_rank = *rank;
-                }
-                i += 1;
-            };
-
-            // Collecting  all Killer hands with the best muder rank !! Ooo Yyya!
-            let mut winning_hands: Array<Hand> = array![];
-            let mut kicker_cards: Array<Card> = array![];
-
-            i = 0;
-            while i < hand_rankings.len() {
-                let (hand, rank, kickers) = hand_rankings.at(i);
-                if *rank == best_rank {
-                    winning_hands.append(hand.clone());
-                    // If this is the first winner, set the kicker cards
-                    if kicker_cards.len() == 0 {
-                        kicker_cards = kickers.clone();
-                    }
-                }
-                i += 1;
-            };
-
-            if winning_hands.len() > 1 {
-                kicker_cards = array![];
-            }
-
-            (winning_hands, kicker_cards)
+            HandTrait::compare_hands(active_hands, community_cards, game_params)
         }
     }
 }

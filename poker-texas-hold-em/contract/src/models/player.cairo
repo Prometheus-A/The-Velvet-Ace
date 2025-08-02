@@ -192,15 +192,11 @@ mod tests {
 
     #[test]
     fn test_exit_with_out_true_succeeds() {
-        let contracts = array![CoreContract::Actions];
-        let (mut world, systems) = deploy_contracts(contracts);
-
+        let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
         mock_poker_game(ref world);
-        let mut game: Game = world.read_model(1);
-        let mut player: Player = world.read_model(PLAYER_1());
-
+        let mut game = world.read_model(1);
+        let mut player = world.read_model(PLAYER_1());
         player.exit(ref game, true);
-
         assert_eq!(
             player.out,
             (game.id, game.reshuffled),
@@ -215,15 +211,11 @@ mod tests {
 
     #[test]
     fn test_exit_with_out_false_succeeds() {
-        let contracts = array![CoreContract::Actions];
-        let (mut world, systems) = deploy_contracts(contracts);
-
+        let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
         mock_poker_game(ref world);
-        let mut game: Game = world.read_model(1);
-        let mut player: Player = world.read_model(PLAYER_1());
-
+        let mut game = world.read_model(1);
+        let mut player = world.read_model(PLAYER_1());
         player.exit(ref game, false);
-
         assert_eq!(player.out, (0, 0), "Player out should be set to game id and reshuffled");
         assert_eq!(player.current_bet, 0, "Player current bet should be reset to 0");
         assert_eq!(player.is_dealer, false, "Player should not be dealer after exit");
@@ -235,48 +227,36 @@ mod tests {
     #[test]
     #[should_panic(expected: 'CANNOT EXIT, PLAYER NOT LOCKED')]
     fn test_exit_without_lock_fails() {
-        let contracts = array![CoreContract::Actions];
-        let (mut world, systems) = deploy_contracts(contracts);
-
+        let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
         mock_poker_game(ref world);
-        let mut game: Game = world.read_model(1);
+        let mut game = world.read_model(1);
         let mut player: Player = world.read_model(PLAYER_3());
         player.locked = (false, 0);
-
         player.exit(ref game, true);
     }
 
     #[test]
     fn test_exit_with_splitted_showdown_returns_locked_chips() {
-        let contracts = array![CoreContract::Actions];
-        let (mut world, systems) = deploy_contracts(contracts);
-
+        let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
         mock_poker_game(ref world);
         let mut game: Game = world.read_model(1);
         let mut player: Player = world.read_model(PLAYER_1());
-
         let stake = 1000;
         game.params.showdown_type = ShowdownType::Splitted(stake);
         player.chips = 2000;
         player.locked_chips = stake;
-
         player.exit(ref game, true);
-
         assert_eq!(player.chips, 3000, "Player should get locked chips back");
         assert_eq!(player.locked_chips, 0, "Locked chips should be reset to 0");
     }
 
-
     #[test]
     #[should_panic(expected: 'GAME PLAYER COUNT SUB')]
     fn test_exit_with_zero_player_count_fails() {
-        let contracts = array![CoreContract::Actions];
-        let (mut world, systems) = deploy_contracts(contracts);
-
+        let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
         mock_poker_game(ref world);
         let mut game: Game = world.read_model(1);
         let mut player: Player = world.read_model(PLAYER_1());
-
         game.current_player_count = 0;
         player.exit(ref game, true);
     }
@@ -284,52 +264,39 @@ mod tests {
     #[test]
     #[should_panic(expected: 'BAD REQUEST')]
     fn test_exit_with_invalid_player_fails() {
-        let contracts = array![CoreContract::Actions];
-        let (mut world, systems) = deploy_contracts(contracts);
-
+        let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
         mock_poker_game(ref world);
         let mut game: Game = world.read_model(1);
         let mut player: Player = world.read_model(PLAYER_2());
         player.locked = (true, 999);
-
         player.exit(ref game, true);
     }
 
     #[test]
     fn test_enter_succeeds_new_player() {
-        let contracts = array![CoreContract::Actions];
-        let (mut world, systems) = deploy_contracts(contracts);
-
+        let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
         mock_allowable_game(ref world);
         let mut game: Game = world.read_model(2);
-
-        let mut player = mock_unlocked_player();
-
+        let mut player: Player = mock_unlocked_player();
         let is_full = player.enter(ref game);
         assert_eq!(player.locked, (true, game.id), "Player should be locked to game");
         assert_eq!(player.in_round, true, "Player should be in round");
         assert_eq!(game.current_player_count, 3, "Game player count should increase");
         assert_eq!(player.eligible_pots, 1, "Player should be eligible for 1 pot");
         assert_eq!(is_full, false, "Game should not be full");
-
         assert_eq!(game.players.len(), 4, "Player should be added to game players");
         assert_eq!(*game.players.at(3), PLAYER_4(), "Last player should be PLAYER_4");
     }
 
     #[test]
     fn test_is_full_returns_true_when_game_full() {
-        let contracts = array![CoreContract::Actions];
-        let (mut world, systems) = deploy_contracts(contracts);
-
+        let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
         mock_allowable_game(ref world);
         let mut game: Game = world.read_model(2);
-
         game.current_player_count = 2;
         game.params.max_no_of_players = 3;
-
-        let mut player = mock_unlocked_player();
+        let mut player: Player = mock_unlocked_player();
         let is_full = player.enter(ref game);
-
         assert_eq!(is_full, true, "Game should be full after player enters");
         assert_eq!(game.current_player_count, 3, "Game should have max players");
     }
@@ -337,76 +304,57 @@ mod tests {
     #[test]
     #[should_panic(expected: 'PLAYER ALREADY LOCKED')]
     fn test_enter_fails_when_player_already_locked() {
-        let contracts = array![CoreContract::Actions];
-        let (mut world, systems) = deploy_contracts(contracts);
-
+        let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
         mock_allowable_game(ref world);
         let mut game: Game = world.read_model(2);
-
         let mut player: Player = world.read_model(PLAYER_1());
         player.locked = (true, game.id);
-
         player.enter(ref game);
     }
 
     #[test]
     #[should_panic(expected: 'GAME NOT INITIALIZED')]
     fn test_enter_fails_when_game_not_initialized() {
-        let contracts = array![CoreContract::Actions];
-        let (mut world, systems) = deploy_contracts(contracts);
-
+        let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
         mock_uninitialized_game(ref world);
         let mut game: Game = world.read_model(3);
-
-        let mut player = mock_unlocked_player();
+        let mut player: Player = mock_unlocked_player();
         player.enter(ref game);
     }
 
     #[test]
     #[should_panic(expected: 'GAME ALREADY ENDED')]
     fn test_enter_fails_when_game_ended() {
-        let contracts = array![CoreContract::Actions];
-        let (mut world, systems) = deploy_contracts(contracts);
-
+        let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
         mock_ended_game(ref world);
         let mut game: Game = world.read_model(4);
-
-        let mut player = mock_unlocked_player();
+        let mut player: Player = mock_unlocked_player();
         player.enter(ref game);
     }
 
     #[test]
     #[should_panic(expected: 'INSUFFICIENT CHIPS')]
     fn test_enter_fails_when_insufficient_chips() {
-        let contracts = array![CoreContract::Actions];
-        let (mut world, systems) = deploy_contracts(contracts);
-
+        let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
         mock_allowable_game(ref world);
         let mut game: Game = world.read_model(2);
         let stake = 1000;
         game.params.showdown_type = ShowdownType::Splitted(stake);
-
-        let mut player = mock_unlocked_player();
+        let mut player: Player = mock_unlocked_player();
         player.chips = 0;
-
         player.enter(ref game);
     }
 
     #[test]
     fn test_refresh_stake_succeeds_with_splitted_showdown() {
-        let contracts = array![CoreContract::Actions];
-        let (mut world, systems) = deploy_contracts(contracts);
-
+        let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
         mock_allowable_game(ref world);
         let mut game: Game = world.read_model(2);
         let stake = 1000;
         game.params.showdown_type = ShowdownType::Splitted(stake);
-
-        let mut player = mock_unlocked_player();
+        let mut player: Player = mock_unlocked_player();
         player.chips = 2000;
-
         let result = player.refresh_stake(ref game);
-
         assert_eq!(result, true, "Refresh stake should succeed");
         assert_eq!(player.chips, 1000, "Player chips should be reduced by stake");
         assert_eq!(player.locked_chips, 1000, "Locked chips should equal stake");
@@ -414,34 +362,27 @@ mod tests {
 
     #[test]
     fn test_refresh_stake_fails_with_insufficient_chips() {
-        let contracts = array![CoreContract::Actions];
-        let (mut world, systems) = deploy_contracts(contracts);
+        let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
         mock_allowable_game(ref world);
         let mut game: Game = world.read_model(2);
         let stake = 1000;
         game.params.showdown_type = ShowdownType::Splitted(stake);
-
-        let mut player = mock_unlocked_player();
+        let mut player: Player = mock_unlocked_player();
         player.chips = 500;
-
         let result = player.refresh_stake(ref game);
-
         assert_eq!(result, false, "Refresh stake should fail");
     }
 
     #[test]
     fn test_is_maxed_returns_true_when_player_maxed() {
-        let contracts = array![CoreContract::Actions];
-        let (mut world, systems) = deploy_contracts(contracts);
+        let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
         mock_poker_game(ref world);
         let mut game: Game = world.read_model(1);
         let mut player: Player = world.read_model(PLAYER_1());
         player.chips = 0;
         player.current_bet = 0;
         player.eligible_pots = 0;
-
         let result = player.is_maxed(@game);
-
         assert_eq!(result, true, "Player should be maxed");
     }
 }

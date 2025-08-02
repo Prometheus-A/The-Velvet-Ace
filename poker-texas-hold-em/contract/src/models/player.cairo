@@ -124,71 +124,6 @@ mod tests {
         );
     }
 
-    fn mock_unlocked_player() -> Player {
-        mock_player(
-            PLAYER_4(), 'Nobody', 5000, 0, 1, (false, 1), false, true, (0, 0), 0x3, 0, false, 1,
-        )
-    }
-
-    fn mock_uninitialized_game(ref world: WorldStorage) {
-        mock_poker_game_flex(
-            ref world,
-            3,
-            false,
-            false,
-            0,
-            false,
-            0,
-            array![],
-            array![],
-            Option::None,
-            array![],
-            array![],
-            0,
-            get_default_game_params(),
-            0,
-            false,
-            0,
-            0,
-            0,
-            false,
-            false,
-            0,
-            Option::None,
-            0,
-            array![],
-        );
-    }
-
-    fn mock_ended_game(ref world: WorldStorage) {
-        mock_poker_game_flex(
-            ref world,
-            4,
-            false,
-            true,
-            0,
-            false,
-            0,
-            array![PLAYER_1()],
-            array![],
-            Option::None,
-            array![],
-            array![],
-            0,
-            get_default_game_params(),
-            0,
-            false,
-            0,
-            0,
-            0,
-            false,
-            false,
-            0,
-            Option::None,
-            0,
-            array![],
-        );
-    }
 
     #[test]
     fn test_exit_with_out_true_succeeds() {
@@ -277,7 +212,9 @@ mod tests {
         let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
         mock_allowable_game(ref world);
         let mut game: Game = world.read_model(2);
-        let mut player: Player = mock_unlocked_player();
+        let mut player: Player = mock_player(
+            PLAYER_4(), 'Nobody', 5000, 0, 1, (false, 1), false, true, (0, 0), 0x3, 0, false, 1,
+        );
         let is_full = player.enter(ref game);
         assert_eq!(player.locked, (true, game.id), "Player should be locked to game");
         assert_eq!(player.in_round, true, "Player should be in round");
@@ -295,7 +232,9 @@ mod tests {
         let mut game: Game = world.read_model(2);
         game.current_player_count = 2;
         game.params.max_no_of_players = 3;
-        let mut player: Player = mock_unlocked_player();
+        let mut player: Player = mock_player(
+            PLAYER_4(), 'Nobody', 5000, 0, 1, (false, 1), false, true, (0, 0), 0x3, 0, false, 1,
+        );
         let is_full = player.enter(ref game);
         assert_eq!(is_full, true, "Game should be full after player enters");
         assert_eq!(game.current_player_count, 3, "Game should have max players");
@@ -316,9 +255,37 @@ mod tests {
     #[should_panic(expected: 'GAME NOT INITIALIZED')]
     fn test_enter_fails_when_game_not_initialized() {
         let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
-        mock_uninitialized_game(ref world);
+        mock_poker_game_flex(
+            ref world,
+            3,
+            false,
+            false,
+            0,
+            false,
+            0,
+            array![],
+            array![],
+            Option::None,
+            array![],
+            array![],
+            0,
+            get_default_game_params(),
+            0,
+            false,
+            0,
+            0,
+            0,
+            false,
+            false,
+            0,
+            Option::None,
+            0,
+            array![],
+        );
         let mut game: Game = world.read_model(3);
-        let mut player: Player = mock_unlocked_player();
+        let mut player: Player = mock_player(
+            PLAYER_4(), 'Nobody', 5000, 0, 1, (false, 1), false, true, (0, 0), 0x3, 0, false, 1,
+        );
         player.enter(ref game);
     }
 
@@ -326,9 +293,37 @@ mod tests {
     #[should_panic(expected: 'GAME ALREADY ENDED')]
     fn test_enter_fails_when_game_ended() {
         let (mut world, _) = deploy_contracts(array![CoreContract::Actions]);
-        mock_ended_game(ref world);
+        mock_poker_game_flex(
+            ref world,
+            4,
+            false,
+            true,
+            0,
+            false,
+            0,
+            array![PLAYER_1()],
+            array![],
+            Option::None,
+            array![],
+            array![],
+            0,
+            get_default_game_params(),
+            0,
+            false,
+            0,
+            0,
+            0,
+            false,
+            false,
+            0,
+            Option::None,
+            0,
+            array![],
+        );
         let mut game: Game = world.read_model(4);
-        let mut player: Player = mock_unlocked_player();
+        let mut player: Player = mock_player(
+            PLAYER_4(), 'Nobody', 5000, 0, 1, (false, 1), false, true, (0, 0), 0x3, 0, false, 1,
+        );
         player.enter(ref game);
     }
 
@@ -340,7 +335,9 @@ mod tests {
         let mut game: Game = world.read_model(2);
         let stake = 1000;
         game.params.showdown_type = ShowdownType::Splitted(stake);
-        let mut player: Player = mock_unlocked_player();
+        let mut player: Player = mock_player(
+            PLAYER_4(), 'Nobody', 5000, 0, 1, (false, 1), false, true, (0, 0), 0x3, 0, false, 1,
+        );
         player.chips = 0;
         player.enter(ref game);
     }
@@ -352,7 +349,9 @@ mod tests {
         let mut game: Game = world.read_model(2);
         let stake = 1000;
         game.params.showdown_type = ShowdownType::Splitted(stake);
-        let mut player: Player = mock_unlocked_player();
+        let mut player: Player = mock_player(
+            PLAYER_4(), 'Nobody', 5000, 0, 1, (false, 1), false, true, (0, 0), 0x3, 0, false, 1,
+        );
         player.chips = 2000;
         let result = player.refresh_stake(ref game);
         assert_eq!(result, true, "Refresh stake should succeed");
@@ -367,7 +366,9 @@ mod tests {
         let mut game: Game = world.read_model(2);
         let stake = 1000;
         game.params.showdown_type = ShowdownType::Splitted(stake);
-        let mut player: Player = mock_unlocked_player();
+        let mut player: Player = mock_player(
+            PLAYER_4(), 'Nobody', 5000, 0, 1, (false, 1), false, true, (0, 0), 0x3, 0, false, 1,
+        );
         player.chips = 500;
         let result = player.refresh_stake(ref game);
         assert_eq!(result, false, "Refresh stake should fail");

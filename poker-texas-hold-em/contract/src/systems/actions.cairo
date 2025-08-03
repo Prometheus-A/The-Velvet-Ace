@@ -1,26 +1,25 @@
 /// POKER CONTRACT
 #[dojo::contract]
 pub mod actions {
-    use core::num::traits::Zero;
     use core::ecdsa::{check_ecdsa_signature, recover_public_key};
+    use core::num::traits::Zero;
     use core::poseidon::poseidon_hash_span;
-    use starknet::{ContractAddress, get_caller_address, get_contract_address, get_block_timestamp};
-
     use dojo::event::EventStorage;
     use dojo::model::{Model, ModelStorage, ModelValueStorage};
     use dojo::world::WorldStorage;
     use poker::models::base::{
-        CardDealt, GameConcluded, GameErrors, GameInitialized, HandCreated, HandResolved, Id,
-        PlayerJoined, PlayerLeft, RoundResolved, RoundStarted, RoundEnded, CommunityCardDealt,
+        CardDealt, CommunityCardDealt, GameConcluded, GameErrors, GameInitialized, HandCreated,
+        HandResolved, Id, PlayerJoined, PlayerLeft, RoundEnded, RoundResolved, RoundStarted,
     };
     use poker::models::card::{Card, CardTrait};
     use poker::models::deck::{Deck, DeckTrait};
     use poker::models::game::{
         Game, GameMode, GameParams, GameStats, GameTrait, Salts, ShowdownType,
     };
-    use poker::models::hand::{Hand, HandTrait, Proofs};
+    use poker::models::hand::{Hand, HandTrait, Proofs, HandRank};
     use poker::models::player::{Player, PlayerTrait};
-    use poker::traits::game::get_default_game_params;
+    use poker::traits::{game::get_default_game_params, handtrait};
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
     use crate::systems::interface::IActions;
     use crate::utils::deck::verify_game;
 
@@ -1028,7 +1027,7 @@ pub mod actions {
                 }
             };
 
-            let (winning_hands, _) = self._extract_winner();
+            let (winning_hands, _, _) = self._extract_winner(game_id, community_cards, hands);
             let mut winners = array![];
             for i in 0..winning_hands.len() {
                 let winner = winning_hands.at(i);
@@ -1291,9 +1290,16 @@ pub mod actions {
                 )
         }
 
+        // @ryzen_xp
         // extracts the winning hands
-        fn _extract_winner(ref self: ContractState) -> (Array<Hand>, Option<Array<Card>>) {
-            (array![], Option::None)
+        fn _extract_winner(
+            ref self: ContractState, game_id: u64, community_cards: Array<Card>, hands: Array<Hand>,
+        ) -> (Span<Hand>, HandRank, Span<Card>) {
+            let mut world = self.world_default();
+            let game: Game = world.read_model(game_id);
+            let game_params = game.params;
+
+            HandTrait::compare_hands(hands, community_cards, game_params)
         }
     }
 }

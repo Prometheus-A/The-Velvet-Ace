@@ -1296,43 +1296,10 @@ pub mod actions {
             ref self: ContractState, game_id: u64, community_cards: Array<Card>, hands: Array<Hand>,
         ) -> (Span<Hand>, HandRank, Span<Card>) {
             let mut world = self.world_default();
-
-            let players: Array<ContractAddress> = world
-                .read_member(Model::<Game>::ptr_from_keys(game_id), selector!("players"));
-
             let game: Game = world.read_model(game_id);
             let game_params = game.params;
 
-            // Filtering active hands from players still in round !!!
-            let mut active_hands: Array<Hand> = array![];
-
-            let mut i = 0;
-            while i < hands.len() {
-                let hand = hands.at(i);
-
-                // checking if this hand belongs to a player still in the round !!
-                let mut j = 0;
-                while j < players.len() {
-                    let player_address = players.at(j);
-                    let player: Player = world.read_model(*player_address);
-
-                    if player.in_round
-                        && player.is_in_game(game_id)
-                        && hand.player == player_address {
-                        if hand.cards.len() > 0 {
-                            active_hands.append(hand.clone());
-                        }
-                        break;
-                    }
-                    j += 1;
-                };
-
-                i += 1;
-            };
-
-            assert(active_hands.len() > 0, 'No_valid_hands_to_compare');
-
-            HandTrait::compare_hands(active_hands, community_cards, game_params)
+            HandTrait::compare_hands(hands, community_cards, game_params)
         }
     }
 }

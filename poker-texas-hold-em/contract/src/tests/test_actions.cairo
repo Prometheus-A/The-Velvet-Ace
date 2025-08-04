@@ -365,10 +365,12 @@ mod tests {
         // Player 2 calls - should match game.current_bet
         set_contract_address(PLAYER_2());
         systems.actions.call();
-        
+
         // Check player 2 state after call
         let player_2_after_call: Player = world.read_model(PLAYER_2());
-        assert_eq!(player_2_after_call.current_bet, raise_amount.into(), "Player 2 didn't call correctly");
+        assert_eq!(
+            player_2_after_call.current_bet, raise_amount.into(), "Player 2 didn't call correctly",
+        );
 
         // Check if betting round completion would be detected at this point
         game = world.read_model(1);
@@ -379,7 +381,7 @@ mod tests {
         // Player 3 calls - this should complete the betting round and reset state
         set_contract_address(PLAYER_3());
         systems.actions.call();
-        
+
         // Check all player states immediately after the call
         game = world.read_model(1);
         let player_1: Player = world.read_model(PLAYER_1());
@@ -410,7 +412,7 @@ mod tests {
         set_contract_address(PLAYER_1());
         systems.actions.raise(raise_amount.into());
     }
-// @kaylahray Testing bet spacing success
+    // @kaylahray Testing bet spacing success
     #[test]
     fn test_bet_spacing_success() {
         // [Setup]
@@ -426,7 +428,7 @@ mod tests {
         let updated_game: Game = world.read_model(1);
         assert_eq!(updated_game.current_bet, raise_amount.into(), "Bet spacing success failed");
     }
-//   @kaylahray Testing all-in sets highest staker
+    //   @kaylahray Testing all-in sets highest staker
     #[test]
     fn test_all_in_sets_highest_staker() {
         // [Setup]

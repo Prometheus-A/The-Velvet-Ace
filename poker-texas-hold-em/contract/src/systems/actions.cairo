@@ -292,13 +292,11 @@ pub mod actions {
                 no_of_chips > game_current_bet, "Raise amount is less than the game's current bet.",
             );
 
-         // Validate bet spacing - raise amount must be in multiples of bet_spacing @kaylahray
+            // Validate bet spacing - raise amount must be in multiples of bet_spacing @kaylahray
             let bet_spacing = params.bet_spacing;
             // Only the increment after current_bet needs to be multiple of bet_spacing. @kaylahray
             let raise_delta = no_of_chips - game_current_bet;
-            assert(
-                raise_delta % bet_spacing.into() == 0, 'Invalid raise spacing'
-            );
+            assert(raise_delta % bet_spacing.into() == 0, 'Invalid raise spacing');
 
             // adjust this pot accordingly
             let mut game_pot = *game_pots.at(game_pots.len() - 1);
@@ -320,9 +318,12 @@ pub mod actions {
 
             game_current_bet = player.current_bet;
             // @Kaylahray 👇
-           world.write_member(Model::<Game>::ptr_from_keys(game_id), selector!("highest_staker"), Option::Some(player.id));
-           
-            
+            world
+                .write_member(
+                    Model::<Game>::ptr_from_keys(game_id),
+                    selector!("highest_staker"),
+                    Option::Some(player.id),
+                );
 
             let mut updated_game_pots: Array<u256> = ArrayTrait::new();
             let mut i = 0;
@@ -339,7 +340,7 @@ pub mod actions {
             self.after_play(player.id);
         }
 
-       
+
         /// @dub_zn
         fn all_in(ref self: ContractState) {
             let mut world = self.world_default();
@@ -348,7 +349,7 @@ pub mod actions {
             // check the previous pot here.
             let game_id: u64 = *player.extract_current_game_id();
             let amount = player.chips;
-            
+
             let cb = selector!("current_bet");
             let game_current_bet = world.read_member(Model::<Game>::ptr_from_keys(game_id), cb);
 
@@ -358,23 +359,20 @@ pub mod actions {
 
             // @kaylahray Set highest_staker if this all-in creates new highest bet
             if player.current_bet > game_current_bet {
-                world.write_member(
-                    Model::<Game>::ptr_from_keys(game_id), 
-                    selector!("highest_staker"), 
-                    Option::Some(player.id)
-                );
-                world.write_member(
-                    Model::<Game>::ptr_from_keys(game_id), 
-                    cb, 
-                    player.current_bet
-                );
+                world
+                    .write_member(
+                        Model::<Game>::ptr_from_keys(game_id),
+                        selector!("highest_staker"),
+                        Option::Some(player.id),
+                    );
+                world.write_member(Model::<Game>::ptr_from_keys(game_id), cb, player.current_bet);
             }
 
             // Handle side pot creation if needed
             if amount < game_current_bet {
                 self.adjust_pot(game_id, ref player, game_current_bet);
             }
-            
+
             world.write_model(@player);
             self.after_play(player.id);
         }
@@ -808,7 +806,7 @@ pub mod actions {
             );
         }
 
-              /// @Reentrancy, @Birdmannn
+        /// @Reentrancy, @Birdmannn
         fn after_play(ref self: ContractState, caller: ContractAddress) {
             let mut world = self.world_default();
             let mut player: Player = world.read_model(caller);
@@ -847,7 +845,7 @@ pub mod actions {
                 game.showdown = true;
             } else {
                 game.next_player = next_player_option;
-                
+
                 // Check if betting round is complete (more gas efficient) @kaylahray
                 if self.is_betting_round_complete(@game, @world) {
                     // Reset betting state efficiently
@@ -874,13 +872,11 @@ pub mod actions {
 
         /// betting round completion check @kaylahray
         fn is_betting_round_complete(
-            self: @ContractState, 
-            game: @Game, 
-            world: @dojo::world::WorldStorage
+            self: @ContractState, game: @Game, world: @dojo::world::WorldStorage,
         ) -> bool {
             let mut all_equal_bets = true;
             let mut active_players = 0_u32;
-            
+
             // Single pass through players to check betting status  @kaylahray
             for player_addr in game.players.span() {
                 let p: Player = world.read_model(*player_addr);
@@ -893,35 +889,34 @@ pub mod actions {
                 }
             };
 
-            // @kaylahray Betting round complete if all active players have equal bets and the game bet is not zero
+            // @kaylahray Betting round complete if all active players have equal bets and the game
+            // bet is not zero
             all_equal_bets && active_players > 1 && *game.current_bet > 0
         }
 
         /// @kaylahray batch reset of betting round
         fn reset_betting_round(
-            ref self: ContractState,
-            game_id: u64,
-            ref game: Game,
-            ref world: WorldStorage
+            ref self: ContractState, game_id: u64, ref game: Game, ref world: WorldStorage,
         ) {
             // Reset game state
             game.highest_staker = Option::None;
             game.current_bet = 0;
-            
+
             // Determine next phase
             if game.community_cards.len() == 5 {
                 game.showdown = true;
             } else {
                 game.community_dealing = true;
             }
-            
+
             // Batch reset all players' current_bet using write_member for better gas efficiency
             for player_addr in game.players.span() {
-                world.write_member(
-                    Model::<Player>::ptr_from_keys(*player_addr),
-                    selector!("current_bet"),
-                    0_u256
-                );
+                world
+                    .write_member(
+                        Model::<Player>::ptr_from_keys(*player_addr),
+                        selector!("current_bet"),
+                        0_u256,
+                    );
             }
         }
 

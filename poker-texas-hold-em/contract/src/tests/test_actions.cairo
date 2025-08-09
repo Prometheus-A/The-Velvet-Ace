@@ -1,5 +1,6 @@
 #[cfg(test)]
 pub mod tests {
+pub mod tests {
     use dojo::event::EventStorageTest;
     use dojo_cairo_test::WorldStorageTestTrait;
     use dojo::model::{ModelStorage, ModelValueStorage, ModelStorageTest};
@@ -8,24 +9,101 @@ pub mod tests {
         spawn_test_world, NamespaceDef, TestResource, ContractDefTrait, ContractDef,
     };
     use poker::models::game::{Game, GameTrait, GameParams, ShowdownType};
+    use poker::models::game::{Game, GameTrait, GameParams, ShowdownType};
+    use poker::models::card::{Card, Suits, Royals, CardTrait};
+    use poker::models::deck::Deck;
+    use poker::traits::deck::DeckTrait;
     use poker::models::player::{Player, PlayerTrait};
     use poker::models::card::{Card, Suits, Royals};
     use poker::traits::game::get_default_game_params;
     use poker::systems::interface::{IActionsDispatcher, IActionsDispatcherTrait};
     use poker::tests::setup::setup::{CoreContract, deploy_contracts, Systems};
+    use poker::utils::game::{MerkleState, MerkleTrait};
+    use poker::tests::setup::setup::{CoreContract, deploy_contracts};
     use starknet::ContractAddress;
     use starknet::testing::{set_account_contract_address, set_contract_address};
 
+    pub fn PLAYER_1() -> ContractAddress {
     pub fn PLAYER_1() -> ContractAddress {
         starknet::contract_address_const::<'PLAYER_1'>()
     }
 
     pub fn PLAYER_2() -> ContractAddress {
+    pub fn PLAYER_2() -> ContractAddress {
         starknet::contract_address_const::<'PLAYER_2'>()
     }
 
     pub fn PLAYER_3() -> ContractAddress {
+    pub fn PLAYER_3() -> ContractAddress {
         starknet::contract_address_const::<'PLAYER_3'>()
+    }
+
+    pub fn PLAYER_4() -> ContractAddress {
+        starknet::contract_address_const::<'PLAYER_4'>()
+    }
+
+    // Flexible player mock
+    pub fn mock_player(
+        id: ContractAddress,
+        alias: felt252,
+        chips: u256,
+        current_bet: u256,
+        total_rounds: u64,
+        locked: (bool, u64),
+        is_dealer: bool,
+        in_round: bool,
+        out: (u64, u64),
+    ) -> Player {
+        let mut player: Player = Default::default();
+        player.id = id;
+        player.alias = alias;
+        player.chips = chips;
+        player.current_bet = current_bet;
+        player.total_rounds = total_rounds;
+        player.locked = locked;
+        player.is_dealer = is_dealer;
+        player.in_round = in_round;
+        player.out = out;
+        player.locked_chips = 0;
+        player.eligible_pots = 1;
+
+        player
+    }
+
+    // Flexible game mock
+    pub fn mock_poker_game_flex(
+        ref world: WorldStorage,
+        in_progress: bool,
+        has_ended: bool,
+        current_round: u8,
+        round_in_progress: bool,
+        current_player_count: u32,
+        players: Array<ContractAddress>,
+        next_player: Option<ContractAddress>,
+        community_cards: Array<Card>,
+        current_bet: u256,
+        player_states: Array<Player>,
+    ) {
+        let temp_player_states = player_states.span();
+        let mut player_states = array![];
+        for player in temp_player_states {
+            player_states.append(player);
+        };
+
+        let mut game: Game = Default::default();
+        game.id = 1;
+        game.in_progress = in_progress;
+        game.has_ended = has_ended;
+        game.current_round = current_round;
+        game.round_in_progress = round_in_progress;
+        game.current_player_count = current_player_count;
+        game.players = players;
+        game.next_player = next_player;
+        game.pots = array![0];
+        game.current_bet = current_bet;
+        game.params = get_default_game_params();
+        world.write_model(@game);
+        world.write_models(player_states.span());
     }
 
     pub fn PLAYER_4() -> ContractAddress {
@@ -411,6 +489,10 @@ pub mod tests {
         );
     }
 
+    fn card(suit: u8, value: u16) -> Card {
+        Card { suit, value }
+    }
+
     // [Betting Logic Tests] - Testing highest staker and bet reset functionality @kaylahray
     #[test]
     fn test_highest_staker_and_bet_reset() {
@@ -521,6 +603,8 @@ pub mod tests {
     // @kaylahray Testing all-in works regardless of bet spacing
     #[test]
     fn test_all_in_ignores_bet_spacing() {
+    #[test]
+    fn test_showdown() {
         // [Setup]
         let contracts = array![CoreContract::Actions];
         let (mut world, systems) = deploy_contracts(contracts);
@@ -630,6 +714,43 @@ pub mod tests {
         let contracts = array![CoreContract::Actions];
         let (mut world, systems) = deploy_contracts(contracts);
         mock_poker_game(ref world);
+        mock_poker_game(ref world);
+
+        // [Setup State]
+        let mut game: Game = world.read_model(1);
+        game.current_bet = 1000;
+        world.write_model(@game);
+
+        let salt = array!['Salt1', 'Salt2', 'Salt3'];
+
+        let mut hand: Array<Card> = array![];
+        hand.append(card(Suits::CLUBS, Royals::ACE));
+        hand.append(card(Suits::CLUBS, 4));
+        hand.append(card(Suits::CLUBS, 5));
+        // root: 3265258184025689748944567234307789604284324313859921054492400796521367996981
+        let cards = hand;
+        let mut merkle_state = MerkleTrait::new(cards.clone(), salt.clone());
+        let root = merkle_state.get_root();
+        println!("Root of cards: {}", root);
+
+        let mut leaves: Array<felt252> = array![];
+        for i in 0..cards.len() {
+            let mut card = *cards.at(i);
+            leaves.append(card.hash(salt.clone()));
+        };
+
+        let proof = merkle_state.generate_proof_v2(0);
+        println!("Proof: {:?}", proof);
+
+        // let's verify that ACE of CLUBS is in this root, using this proof.
+        let verified = MerkleTrait::verify_v2(proof, root, *leaves.at(0), 0);
+        assert(verified, 'V2 VERIFICATION FAILED');
+
+        let mut player_1: Player = world.read_model(PLAYER_1());
+        player_1.current_bet = 1000;
+        world.write_model(@player_1);
+
+        set_contract_address(player_1.id);
 
         // Complete a betting round
         feign_betting_round(ref world, systems.actions);
@@ -719,6 +840,47 @@ pub mod tests {
         assert!(game_after_betting.highest_staker.is_none(), "Betting round should be complete");
         assert_eq!(game_after_betting.current_bet, 0, "Current bet should be reset");
         assert!(game_after_betting.community_dealing, "Community dealing should be enabled");
+    }
+
+    // [Mocks]
+    // Default mock usage for legacy tests
+    pub fn mock_poker_game(ref world: WorldStorage) {
+        let player_1 = mock_player(
+            PLAYER_1(), 'dub_zn', 2000, 0, 1, (true, 1), false, true, (0, 0),
+        );
+        let player_2 = mock_player(
+            PLAYER_2(), 'Birdmannn', 5000, 0, 1, (true, 1), false, true, (0, 0),
+        );
+        let player_3 = mock_player(
+            PLAYER_3(), 'chiscookeke11', 5000, 0, 1, (true, 1), false, true, (0, 0),
+        );
+        mock_poker_game_flex(
+            ref world,
+            true, // in_progress
+            false, // has_ended
+            1, // current_round
+            true, // round_in_progress
+            2, // current_player_count
+            array![PLAYER_1(), PLAYER_2(), PLAYER_3()],
+            Option::Some(PLAYER_1()),
+            array![],
+            0,
+            array![player_1, player_2, player_3],
+        );
+        let mut deck: Deck = Deck { id: 1, cards: array![] };
+        deck.new_deck();
+
+        // game_id: u64,
+        // hands: Array<Hand>,
+        // game_proofs: Array<Array<felt252>>,
+        // dealt_card_proofs: Array<Array<felt252>>,
+        // deck: Deck,
+        // game_salt: Array<felt252>,
+        // dealt_card_salt: Array<felt252>,
+        // signature_r: Array<felt252>,
+        // signature_s: Array<felt252>,
+        // signature_y_parity: Array<bool>, // to recover the public key
+        // nonce: u64,
     }
 
     // [Mocks]

@@ -906,13 +906,13 @@ pub mod actions {
                     // If next player is the highest staker, the betting round is complete
                     match game.highest_staker {
                         Option::Some(staker) => next_player_addr == staker,
-                        Option::None => false
+                        Option::None => false,
                     }
                 },
                 Option::None => {
                     // No next player means only one player remains (others folded)
                     true
-                }
+                },
             }
         }
 
@@ -920,14 +920,16 @@ pub mod actions {
         fn reset_betting_round(
             ref self: ContractState, game_id: u64, ref game: Game, ref world: WorldStorage,
         ) {
-           
             world
                 .write_member(
                     Model::<Game>::ptr_from_keys(game_id),
                     selector!("highest_staker"),
                     Option::<ContractAddress>::None,
                 );
-            world.write_member(Model::<Game>::ptr_from_keys(game_id), selector!("current_bet"), 0_u256);
+            world
+                .write_member(
+                    Model::<Game>::ptr_from_keys(game_id), selector!("current_bet"), 0_u256,
+                );
 
             // Update local game reference
             game.highest_staker = Option::None;

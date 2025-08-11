@@ -549,10 +549,16 @@ pub mod tests {
         let updated_game: Game = world.read_model(1);
 
         assert_eq!(updated_player.chips, 0, "Player chips should be 0 after all-in");
-        assert_eq!(updated_player.current_bet, 135, "Player current_bet should equal all-in amount");
-        assert_eq!(updated_game.current_bet, 135, "Game current_bet should be updated to all-in amount");
+        assert_eq!(
+            updated_player.current_bet, 135, "Player current_bet should equal all-in amount",
+        );
+        assert_eq!(
+            updated_game.current_bet, 135, "Game current_bet should be updated to all-in amount",
+        );
         assert!(updated_game.highest_staker.is_some(), "Highest staker should be set");
-        assert_eq!(updated_game.highest_staker.unwrap(), PLAYER_1(), "Highest staker should be PLAYER_1");
+        assert_eq!(
+            updated_game.highest_staker.unwrap(), PLAYER_1(), "Highest staker should be PLAYER_1",
+        );
     }
 
     // @kaylahray Community dealing tests - Testing community card dealing functionality
@@ -568,7 +574,10 @@ pub mod tests {
 
         // Check that community_dealing is enabled after betting round completion
         let game_after_betting: Game = world.read_model(1);
-        assert!(game_after_betting.community_dealing, "Community dealing should be enabled after betting round");
+        assert!(
+            game_after_betting.community_dealing,
+            "Community dealing should be enabled after betting round",
+        );
 
         // Now deal three community cards (the flop)
         let card1 = Card { suit: 4, value: 1 }; // Hearts Ace
@@ -581,8 +590,13 @@ pub mod tests {
 
         // Verify all three cards were dealt
         let game_after_dealing: Game = world.read_model(1);
-        assert_eq!(game_after_dealing.community_cards.len(), 3, "Should have 3 community cards after flop");
-        assert!(!game_after_dealing.community_dealing, "Community dealing should be disabled after 3 cards");
+        assert_eq!(
+            game_after_dealing.community_cards.len(), 3, "Should have 3 community cards after flop",
+        );
+        assert!(
+            !game_after_dealing.community_dealing,
+            "Community dealing should be disabled after 3 cards",
+        );
     }
 
     #[test]
@@ -631,14 +645,21 @@ pub mod tests {
 
         // Verify betting can resume - community_dealing should be false, allowing betting
         let game_after_dealing: Game = world.read_model(1);
-        assert!(!game_after_dealing.community_dealing, "Community dealing should be disabled, allowing betting");
+        assert!(
+            !game_after_dealing.community_dealing,
+            "Community dealing should be disabled, allowing betting",
+        );
 
         // Test that a player can now make a bet (check)
         set_contract_address(PLAYER_1());
         systems.actions.check(); // Should succeed
 
         let game_after_check: Game = world.read_model(1);
-        assert_eq!(game_after_check.next_player, Option::Some(PLAYER_2()), "Betting should resume normally");
+        assert_eq!(
+            game_after_check.next_player,
+            Option::Some(PLAYER_2()),
+            "Betting should resume normally",
+        );
     }
 
     //  Trying two functions 👇.
@@ -675,7 +696,6 @@ pub mod tests {
         set_contract_address(PLAYER_1());
         systems.actions.call(); // Should panic with 'INVALID CALL'
     }
-
 
 
     // Helper function to simulate a complete betting round

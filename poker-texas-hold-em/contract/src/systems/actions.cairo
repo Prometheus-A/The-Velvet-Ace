@@ -846,7 +846,7 @@ pub mod actions {
             } else {
                 game.next_player = next_player_option;
 
-                // Check if betting round is complete (more gas efficient) @kaylahray
+                // Check if betting round is complete  @kaylahray
                 if self.is_betting_round_complete(@game, @world) {
                     // Reset betting state efficiently
                     self.reset_betting_round(game_id, ref game, ref world);
@@ -870,35 +870,52 @@ pub mod actions {
             }
         }
 
-        /// betting round completion check @kaylahray
+        /// betting round completion check @kaylahray - Gas optimized version
+        /// Uses game state tracking instead of looping through players
         fn is_betting_round_complete(
             self: @ContractState, game: @Game, world: @dojo::world::WorldStorage,
         ) -> bool {
-            let mut all_equal_bets = true;
-            let mut active_players = 0_u32;
+            // If no highest staker is set, betting round is not complete
+            if game.highest_staker.is_none() {
+                return false;
+            }
 
-            // Single pass through players to check betting status  @kaylahray
-            for player_addr in game.players.span() {
-                let p: Player = world.read_model(*player_addr);
-                if p.in_round {
-                    active_players += 1;
-                    if p.current_bet != *game.current_bet {
-                        all_equal_bets = false;
-                        break;
+            // If current bet is 0, no betting has occurred yet
+            if *game.current_bet == 0 {
+                return false;
+            }
+
+            // Check if we've returned to the highest staker
+            // This means all other players have either folded, called, or gone all-in
+            match game.next_player {
+                Option::Some(next_player_addr) => {
+                    // If next player is the highest staker, the betting round is complete
+                    match game.highest_staker {
+                        Option::Some(staker) => next_player_addr == staker,
+                        Option::None => false
                     }
+                },
+                Option::None => {
+                    // No next player means only one player remains (others folded)
+                    true
                 }
-            };
-
-            // @kaylahray Betting round complete if all active players have equal bets and the game
-            // bet is not zero
-            all_equal_bets && active_players > 1 && *game.current_bet > 0
+            }
         }
 
         /// @kaylahray batch reset of betting round
         fn reset_betting_round(
             ref self: ContractState, game_id: u64, ref game: Game, ref world: WorldStorage,
         ) {
-            // Reset game state
+           
+            world
+                .write_member(
+                    Model::<Game>::ptr_from_keys(game_id),
+                    selector!("highest_staker"),
+                    Option::<ContractAddress>::None,
+                );
+            world.write_member(Model::<Game>::ptr_from_keys(game_id), selector!("current_bet"), 0_u256);
+
+            // Update local game reference
             game.highest_staker = Option::None;
             game.current_bet = 0;
 

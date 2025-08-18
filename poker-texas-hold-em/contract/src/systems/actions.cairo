@@ -54,7 +54,7 @@ pub mod actions {
             let game_id: u64 = self.generate_id(GAME);
             let mut game: Game = Default::default();
             game.init(game_params, game_id);
-            player.enter(ref game);
+            player.enter_first_player(ref game);
 
             let game_initialized = GameInitialized {
                 game_id: game_id,

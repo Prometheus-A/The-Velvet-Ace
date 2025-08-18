@@ -22,7 +22,7 @@ mod setup {
     }
 
     #[derive(Drop)]
-    struct Systems {
+    pub struct Systems {
         actions: IActionsDispatcher,
     }
 

@@ -8,12 +8,13 @@ mod setup {
     use starknet::testing::{set_account_contract_address, set_contract_address};
     use poker::models::base::{
         m_Id, e_GameInitialized, e_CardDealt, e_HandCreated, e_HandResolved, e_RoundResolved,
-        e_PlayerJoined,
+        e_PlayerJoined, e_CommunityCardDealt,
     };
     use poker::models::deck::m_Deck;
     use poker::models::game::m_Game;
     use poker::models::hand::m_Hand;
     use poker::models::player::m_Player;
+    use core::zeroable::Zeroable;
 
 
     #[starknet::interface]
@@ -22,7 +23,7 @@ mod setup {
     }
 
     #[derive(Drop)]
-    struct Systems {
+    pub struct Systems {
         actions: IActionsDispatcher,
     }
 
@@ -102,6 +103,7 @@ mod setup {
             TestResource::Event(e_HandResolved::TEST_CLASS_HASH),
             TestResource::Event(e_PlayerJoined::TEST_CLASS_HASH),
             TestResource::Event(e_RoundResolved::TEST_CLASS_HASH),
+            TestResource::Event(e_CommunityCardDealt::TEST_CLASS_HASH),
         ]
     }
 }

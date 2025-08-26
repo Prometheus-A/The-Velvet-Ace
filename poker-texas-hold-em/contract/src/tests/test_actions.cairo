@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use dojo::event::EventStorageTest;
     use dojo_cairo_test::WorldStorageTestTrait;
     use dojo::model::{ModelStorage, ModelValueStorage, ModelStorageTest};
@@ -7,24 +7,93 @@ mod tests {
     use dojo_cairo_test::{
         spawn_test_world, NamespaceDef, TestResource, ContractDefTrait, ContractDef,
     };
-    use poker::models::game::{Game, GameTrait};
+    use poker::models::game::{Game, GameTrait, GameParams, ShowdownType};
     use poker::models::player::{Player, PlayerTrait};
+    use poker::models::card::{Card, Suits, Royals};
     use poker::traits::game::get_default_game_params;
     use poker::systems::interface::{IActionsDispatcher, IActionsDispatcherTrait};
-    use poker::tests::setup::setup::{CoreContract, deploy_contracts};
+    use poker::tests::setup::setup::{CoreContract, deploy_contracts, Systems};
     use starknet::ContractAddress;
     use starknet::testing::{set_account_contract_address, set_contract_address};
 
-    fn PLAYER_1() -> ContractAddress {
+    pub fn PLAYER_1() -> ContractAddress {
         starknet::contract_address_const::<'PLAYER_1'>()
     }
 
-    fn PLAYER_2() -> ContractAddress {
+    pub fn PLAYER_2() -> ContractAddress {
         starknet::contract_address_const::<'PLAYER_2'>()
     }
 
-    fn PLAYER_3() -> ContractAddress {
+    pub fn PLAYER_3() -> ContractAddress {
         starknet::contract_address_const::<'PLAYER_3'>()
+    }
+
+    pub fn PLAYER_4() -> ContractAddress {
+        starknet::contract_address_const::<'PLAYER_4'>()
+    }
+
+    // Flexible player mock
+    pub fn mock_player(
+        id: ContractAddress,
+        alias: felt252,
+        chips: u256,
+        current_bet: u256,
+        total_rounds: u64,
+        locked: (bool, u64),
+        is_dealer: bool,
+        in_round: bool,
+        out: (u64, u64),
+    ) -> Player {
+        let mut player: Player = Default::default();
+        player.id = id;
+        player.alias = alias;
+        player.chips = chips;
+        player.current_bet = current_bet;
+        player.total_rounds = total_rounds;
+        player.locked = locked;
+        player.is_dealer = is_dealer;
+        player.in_round = in_round;
+        player.out = out;
+        player.locked_chips = 0;
+        player.eligible_pots = 1;
+
+        player
+    }
+
+    // Flexible game mock
+    pub fn mock_poker_game_flex(
+        ref world: WorldStorage,
+        in_progress: bool,
+        has_ended: bool,
+        current_round: u8,
+        round_in_progress: bool,
+        current_player_count: u32,
+        players: Array<ContractAddress>,
+        next_player: Option<ContractAddress>,
+        community_cards: Array<Card>,
+        current_bet: u256,
+        player_states: Array<Player>,
+    ) {
+        let temp_player_states = player_states.span();
+        let mut player_states = array![];
+        for player in temp_player_states {
+            player_states.append(player);
+        };
+
+        let mut game: Game = Default::default();
+        game.id = 1;
+        game.in_progress = in_progress;
+        game.has_ended = has_ended;
+        game.current_round = current_round;
+        game.round_in_progress = round_in_progress;
+        game.current_player_count = current_player_count;
+        game.players = players;
+        game.next_player = next_player;
+        game.pots = array![0];
+        game.current_bet = current_bet;
+        game.params = get_default_game_params();
+        world.write_model(@game);
+        world.write_models(player_states.span());
     }
 
     // [Actions] - check() tests
@@ -342,83 +411,340 @@ mod tests {
         );
     }
 
+    // [Betting Logic Tests] - Testing highest staker and bet reset functionality @kaylahray
+    #[test]
+    fn test_highest_staker_and_bet_reset() {
+        // [Setup]
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+        mock_poker_game(ref world);
+
+        // Player 1 (PLAYER_1) raises @kaylahray
+        let mut game: Game = world.read_model(1);
+        let raise_amount = game.params.small_blind * 4; // Example raise = 40
+        set_contract_address(PLAYER_1());
+        systems.actions.raise(raise_amount.into());
+
+        // Check that highest_staker is set correctly
+        game = world.read_model(1);
+        assert!(game.highest_staker.is_some(), "Highest staker not set on raise");
+        assert_eq!(game.highest_staker.unwrap(), PLAYER_1(), "Incorrect highest staker");
+        assert_eq!(game.current_bet, raise_amount.into(), "Game bet not updated on raise");
+
+        // Player 2 calls - should match game.current_bet
+        set_contract_address(PLAYER_2());
+        systems.actions.call();
+
+        // Check player 2 state after call
+        let player_2_after_call: Player = world.read_model(PLAYER_2());
+        assert_eq!(
+            player_2_after_call.current_bet, raise_amount.into(), "Player 2 didn't call correctly",
+        );
+
+        // Check if betting round completion would be detected at this point
+        game = world.read_model(1);
+        let player_1_mid: Player = world.read_model(PLAYER_1());
+        // At this point: player1=40, player2=40, player3=0, game=40
+        // So betting round should NOT be complete yet
+
+        // Player 3 calls - this should complete the betting round and reset state
+        set_contract_address(PLAYER_3());
+        systems.actions.call();
+
+        // Check all player states immediately after the call
+        game = world.read_model(1);
+        let player_1: Player = world.read_model(PLAYER_1());
+        let player_2: Player = world.read_model(PLAYER_2());
+        let player_3: Player = world.read_model(PLAYER_3());
+
+        // At this point, all players should have current_bet = 40, game.current_bet = 40
+        // The betting round should be complete and reset should have happened
+        assert!(game.highest_staker.is_none(), "Highest staker not reset");
+        assert_eq!(game.current_bet, 0, "Game current bet not reset");
+        assert_eq!(player_1.current_bet, 0, "Player 1 bet not reset");
+        assert_eq!(player_2.current_bet, 0, "Player 2 bet not reset");
+        assert_eq!(player_3.current_bet, 0, "Player 3 bet not reset");
+    }
+
+    // @kaylahray Testing bet spacing logic
+    #[test]
+    #[should_panic(expected: ('Invalid raise spacing', 'ENTRYPOINT_FAILED'))]
+    fn test_bet_spacing_fail() {
+        // [Setup]
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+        mock_poker_game(ref world);
+
+        let game: Game = world.read_model(1);
+        // Not a multiple of bet_spacing (which is small_blind)
+        let raise_amount = game.params.small_blind * 2 + 1;
+        set_contract_address(PLAYER_1());
+        systems.actions.raise(raise_amount.into());
+    }
+    // @kaylahray Testing bet spacing success
+    #[test]
+    fn test_bet_spacing_success() {
+        // [Setup]
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+        mock_poker_game(ref world);
+
+        let game: Game = world.read_model(1);
+        let raise_amount = game.params.small_blind * 4; // 40 is multiple of bet_spacing (20)
+        set_contract_address(PLAYER_1());
+        systems.actions.raise(raise_amount.into());
+
+        let updated_game: Game = world.read_model(1);
+        assert_eq!(updated_game.current_bet, raise_amount.into(), "Bet spacing success failed");
+    }
+    //   @kaylahray Testing all-in sets highest staker
+    #[test]
+    fn test_all_in_sets_highest_staker() {
+        // [Setup]
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+        mock_poker_game(ref world);
+
+        // Player 1 goes all-in
+        set_contract_address(PLAYER_1());
+        systems.actions.all_in();
+
+        let game: Game = world.read_model(1);
+        let player_1: Player = world.read_model(PLAYER_1());
+
+        assert!(game.highest_staker.is_some(), "Highest staker not set on all-in");
+        assert_eq!(game.highest_staker.unwrap(), player_1.id, "Incorrect highest staker on all-in");
+        assert_eq!(game.current_bet, player_1.current_bet, "Game bet not updated on all-in");
+        assert_eq!(player_1.chips, 0, "Player should have 0 chips after all-in");
+    }
+
+    // @kaylahray Testing all-in works regardless of bet spacing
+    #[test]
+    fn test_all_in_ignores_bet_spacing() {
+        // [Setup]
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+        mock_poker_game(ref world);
+
+        // Set up game with bet_spacing requirement (default is small_blind = 10)
+        let game: Game = world.read_model(1);
+        let bet_spacing = game.params.bet_spacing; // Default is 20
+
+        // Set player's chips to an amount that's NOT a multiple of bet_spacing
+        let mut player_1: Player = world.read_model(PLAYER_1());
+        player_1.chips = 135; // 135 % 20 = 15, so NOT a multiple of bet_spacing
+        world.write_model(@player_1);
+
+        // Set game current_bet to 0 for simplicity
+        let mut game_updated: Game = world.read_model(1);
+        game_updated.current_bet = 0;
+        world.write_model(@game_updated);
+
+        // [Execute] - All-in should succeed regardless of bet spacing
+        set_contract_address(PLAYER_1());
+        systems.actions.all_in();
+
+        // [Assert] - All-in worked despite chips not being multiple of bet_spacing
+        let updated_player: Player = world.read_model(PLAYER_1());
+        let updated_game: Game = world.read_model(1);
+
+        assert_eq!(updated_player.chips, 0, "Player chips should be 0 after all-in");
+        assert_eq!(
+            updated_player.current_bet, 135, "Player current_bet should equal all-in amount",
+        );
+        assert_eq!(
+            updated_game.current_bet, 135, "Game current_bet should be updated to all-in amount",
+        );
+        assert!(updated_game.highest_staker.is_some(), "Highest staker should be set");
+        assert_eq!(
+            updated_game.highest_staker.unwrap(), PLAYER_1(), "Highest staker should be PLAYER_1",
+        );
+    }
+
+    // @kaylahray Community dealing tests - Testing community card dealing functionality
+    #[test]
+    fn test_community_dealing_after_betting_round() {
+        // [Setup]
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+        mock_poker_game(ref world);
+
+        // Complete a betting round
+        feign_betting_round(ref world, systems.actions);
+
+        // Check that community_dealing is enabled after betting round completion
+        let game_after_betting: Game = world.read_model(1);
+        assert!(
+            game_after_betting.community_dealing,
+            "Community dealing should be enabled after betting round",
+        );
+
+        // Now deal three community cards (the flop)
+        let card1 = Card { suit: 4, value: 1 }; // Hearts Ace
+        let card2 = Card { suit: 1, value: 13 }; // Spades King
+        let card3 = Card { suit: 3, value: 12 }; // Diamonds Queen
+
+        systems.actions.deal_community_card(card1, 1);
+        systems.actions.deal_community_card(card2, 1);
+        systems.actions.deal_community_card(card3, 1);
+
+        // Verify all three cards were dealt
+        let game_after_dealing: Game = world.read_model(1);
+        assert_eq!(
+            game_after_dealing.community_cards.len(), 3, "Should have 3 community cards after flop",
+        );
+        assert!(
+            !game_after_dealing.community_dealing,
+            "Community dealing should be disabled after 3 cards",
+        );
+    }
+
+    #[test]
+    #[should_panic(expected: ('INVALID DEALING', 'ENTRYPOINT_FAILED'))]
+    fn test_fourth_community_card_dealing_panics() {
+        // [Setup]
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+        mock_poker_game(ref world);
+
+        // Complete a betting round first
+        feign_betting_round(ref world, systems.actions);
+
+        // Deal three valid community cards
+        let card1 = Card { suit: 4, value: 1 }; // Hearts Ace
+        let card2 = Card { suit: 1, value: 13 }; // Spades King
+        let card3 = Card { suit: 3, value: 12 }; // Diamonds Queen
+        let card4 = Card { suit: 2, value: 11 }; // Clubs Jack
+
+        systems.actions.deal_community_card(card1, 1);
+        systems.actions.deal_community_card(card2, 1);
+        systems.actions.deal_community_card(card3, 1);
+
+        // Fourth card should panic
+        systems.actions.deal_community_card(card4, 1);
+    }
+
+    #[test]
+    fn test_betting_resumes_after_community_cards() {
+        // [Setup]
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+        mock_poker_game(ref world);
+
+        // Complete a betting round
+        feign_betting_round(ref world, systems.actions);
+
+        // Deal three community cards
+        let card1 = Card { suit: 4, value: 1 }; // Hearts Ace
+        let card2 = Card { suit: 1, value: 13 }; // Spades King
+        let card3 = Card { suit: 3, value: 12 }; // Diamonds Queen
+
+        systems.actions.deal_community_card(card1, 1);
+        systems.actions.deal_community_card(card2, 1);
+        systems.actions.deal_community_card(card3, 1);
+
+        // Verify betting can resume - community_dealing should be false, allowing betting
+        let game_after_dealing: Game = world.read_model(1);
+        assert!(
+            !game_after_dealing.community_dealing,
+            "Community dealing should be disabled, allowing betting",
+        );
+
+        // Test that a player can now make a bet (check)
+        set_contract_address(PLAYER_1());
+        systems.actions.check(); // Should succeed
+
+        let game_after_check: Game = world.read_model(1);
+        assert_eq!(
+            game_after_check.next_player,
+            Option::Some(PLAYER_2()),
+            "Betting should resume normally",
+        );
+    }
+
+    //  Trying two functions 👇.
+
+    #[test]
+    #[should_panic(expected: ('INVALID CALL', 'ENTRYPOINT_FAILED'))]
+    fn test_betting_fails_when_community_dealing_active() {
+        // [Setup]
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+        mock_poker_game(ref world);
+
+        // Complete a betting round to enable community_dealing
+        feign_betting_round(ref world, systems.actions);
+
+        // Verify community_dealing is active
+        let game_after_betting: Game = world.read_model(1);
+        assert!(game_after_betting.community_dealing, "Community dealing should be active");
+
+        // Try to make a bet while community_dealing is active - should panic
+        set_contract_address(PLAYER_1());
+        systems.actions.check(); // Should panic with 'INVALID CALL'
+    }
+
+    #[test]
+    #[should_panic(expected: ('INVALID CALL', 'ENTRYPOINT_FAILED'))]
+    fn test_call_fails_when_community_dealing_active() {
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+        mock_poker_game(ref world);
+
+        feign_betting_round(ref world, systems.actions);
+
+        set_contract_address(PLAYER_1());
+        systems.actions.call(); // Should panic with 'INVALID CALL'
+    }
+
+
+    // Helper function to simulate a complete betting round
+    fn feign_betting_round(ref world: WorldStorage, actions: IActionsDispatcher) {
+        // Player 1 raises
+        let game: Game = world.read_model(1);
+        let raise_amount = game.params.small_blind * 4; // 40
+        set_contract_address(PLAYER_1());
+        actions.raise(raise_amount.into());
+
+        // Player 2 calls
+        set_contract_address(PLAYER_2());
+        actions.call();
+
+        // Player 3 calls - this completes the betting round
+        set_contract_address(PLAYER_3());
+        actions.call();
+
+        // Verify betting round is complete and reset has occurred
+        let game_after_betting: Game = world.read_model(1);
+        assert!(game_after_betting.highest_staker.is_none(), "Betting round should be complete");
+        assert_eq!(game_after_betting.current_bet, 0, "Current bet should be reset");
+        assert!(game_after_betting.community_dealing, "Community dealing should be enabled");
+    }
+
     // [Mocks]
-    fn mock_poker_game(ref world: WorldStorage) {
-        let game = Game {
-            id: 1,
-            in_progress: true,
-            has_ended: false,
-            current_round: 1,
-            round_in_progress: true,
-            current_player_count: 2,
-            players: array![PLAYER_1(), PLAYER_2(), PLAYER_3()],
-            deck: array![],
-            next_player: Option::Some(PLAYER_1()),
-            community_cards: array![],
-            pots: array![0],
-            current_bet: 0,
-            params: get_default_game_params(),
-            reshuffled: 0,
-            should_end: false,
-            deck_root: 0,
-            dealt_cards_root: 0,
-            nonce: 0,
-            community_dealing: false,
-            showdown: false,
-            round_count: 0,
-            highest_staker: Option::None,
-            previous_offset: 0,
-        };
-
-        let player_1 = Player {
-            id: PLAYER_1(),
-            alias: 'dub_zn',
-            chips: 2000,
-            current_bet: 0,
-            total_rounds: 1,
-            locked: (true, 1),
-            is_dealer: false,
-            in_round: true,
-            out: (0, 0),
-            pub_key: 0x1,
-            locked_chips: 0,
-            is_blacklisted: false,
-            eligible_pots: 1,
-        };
-
-        let player_2 = Player {
-            id: PLAYER_2(),
-            alias: 'Birdmannn',
-            chips: 5000,
-            current_bet: 0,
-            total_rounds: 1,
-            locked: (true, 1),
-            is_dealer: false,
-            in_round: true,
-            out: (0, 0),
-            pub_key: 0x2,
-            locked_chips: 0,
-            is_blacklisted: false,
-            eligible_pots: 1,
-        };
-
-        let player_3 = Player {
-            id: PLAYER_3(),
-            alias: 'chiscookeke11',
-            chips: 5000,
-            current_bet: 0,
-            total_rounds: 1,
-            locked: (true, 1),
-            is_dealer: false,
-            in_round: true,
-            out: (0, 0),
-            pub_key: 0x3,
-            locked_chips: 0,
-            is_blacklisted: false,
-            eligible_pots: 1,
-        };
-
-        world.write_model(@game);
-        world.write_models(array![@player_1, @player_2, @player_3].span());
+    // Default mock usage for legacy tests
+    pub fn mock_poker_game(ref world: WorldStorage) {
+        let player_1 = mock_player(
+            PLAYER_1(), 'dub_zn', 2000, 0, 1, (true, 1), false, true, (0, 0),
+        );
+        let player_2 = mock_player(
+            PLAYER_2(), 'Birdmannn', 5000, 0, 1, (true, 1), false, true, (0, 0),
+        );
+        let player_3 = mock_player(
+            PLAYER_3(), 'chiscookeke11', 5000, 0, 1, (true, 1), false, true, (0, 0),
+        );
+        mock_poker_game_flex(
+            ref world,
+            true, // in_progress
+            false, // has_ended
+            1, // current_round
+            true, // round_in_progress
+            2, // current_player_count
+            array![PLAYER_1(), PLAYER_2(), PLAYER_3()],
+            Option::Some(PLAYER_1()),
+            array![],
+            0,
+            array![player_1, player_2, player_3],
+        );
     }
 }

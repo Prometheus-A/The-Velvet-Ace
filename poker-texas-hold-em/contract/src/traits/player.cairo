@@ -33,18 +33,22 @@ pub impl PlayerImpl of PlayerTrait {
     }
 
     fn enter(ref self: Player, ref game: Game) -> bool {
-        let (is_locked, _) = self.locked;
-        assert(!is_locked, GameErrors::PLAYER_ALREADY_LOCKED);
-        // Ensure player has enough chips for the game
         assert(game.is_initialized(), GameErrors::GAME_NOT_INITIALIZED);
         assert(!game.has_ended, GameErrors::GAME_ALREADY_ENDED);
         assert(game.is_allowable(), GameErrors::ENTRY_DISALLOWED);
+
+        let res: bool = self.enter_first_player(ref game);
+        res
+    }
+
+    fn enter_first_player(ref self: Player, ref game: Game) -> bool {
+        let (is_locked, _) = self.locked;
+        assert(!is_locked, GameErrors::PLAYER_ALREADY_LOCKED);
         assert(self.refresh_stake(ref game), GameErrors::INSUFFICIENT_CHIP);
 
         if (game.id, game.reshuffled) != self.out {
-            // append. Player doesn't exist in the game
             game.players.append(self.id);
-        } // should work.
+        }
         self.locked = (true, game.id);
         self.in_round = true;
         game.current_player_count += 1;

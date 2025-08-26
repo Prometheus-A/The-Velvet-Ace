@@ -67,6 +67,7 @@ impl HandRankU16 of Into<HandRank, u16> {
     }
 }
 
+
 impl HandRankByteArray of Into<HandRank, ByteArray> {
     #[inline(always)]
     fn into(self: HandRank) -> ByteArray {

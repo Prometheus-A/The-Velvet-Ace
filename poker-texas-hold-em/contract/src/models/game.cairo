@@ -27,6 +27,7 @@ pub struct GameParams {
     kicker_split: bool,
     min_amount_of_chips: u256,
     blind_spacing: u16,
+    bet_spacing: u256,
     showdown_type: ShowdownType,
 }
 

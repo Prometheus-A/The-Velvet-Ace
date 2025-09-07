@@ -508,11 +508,6 @@ pub mod tests {
         );
     }
 
-    fn card(suit: u8, value: u16) -> Card {
-        Card { suit, value }
-    }
-
-<<<<<<< HEAD
     // [Betting Logic Tests] - Testing highest staker and bet reset functionality @kaylahray
     #[test]
     fn test_highest_staker_and_bet_reset() {
@@ -623,104 +618,11 @@ pub mod tests {
     // @kaylahray Testing all-in works regardless of bet spacing
     #[test]
     fn test_all_in_ignores_bet_spacing() {
-=======
-    // @truthixify - Comprehensive showdown function tests
-
-    /// Helper function to create a valid showdown setup with proper signatures
-    fn setup_valid_showdown(
-        ref world: WorldStorage,
-    ) -> (
-        u64, // game_id
-        Array<Hand>, // hands
-        Array<Array<felt252>>, // game_proofs
-        Array<Array<felt252>>, // dealt_card_proofs
-        Deck, // deck
-        Array<felt252>, // game_salt
-        Array<felt252>, // dealt_card_salt
-        Array<felt252>, // signature_r
-        Array<felt252>, // signature_s
-        Array<bool>, // signature_y_parity
-        u64 // nonce
-    ) {
-        // Setup game state for showdown
-        let game_id = 1;
-        let mut game: Game = world.read_model(game_id);
-        game.showdown = true;
-        game.round_in_progress = true;
-        game
-            .community_cards =
-                array![card(0, 14), card(1, 13), card(2, 12), card(3, 11), card(0, 10)];
-        game.nonce = 0;
-        world.write_model(@game);
-
-        // Setup player
-        let player_address = SHOWODWN_PLAYER1();
-        let mut player: Player = world.read_model(player_address);
-        player.in_round = true;
-        player.locked = (true, game_id);
-        player.pub_key = 0x20c29f1c98f3320d56f01c13372c923123c35828bce54f2153aa1cfe61c44f2;
-        world.write_model(@player);
-
-        // Create test data
-        let mut deck: Deck = Deck { id: 1, cards: array![] };
-        deck.new_deck();
-
-        let game_salt = array!['Salt1', 'Salt2', 'Salt3'];
-        let dealt_card_salt = array!['DSalt1', 'DSalt2', 'DSalt3'];
-        let mut merkle_state = MerkleTrait::new(deck.cards.clone(), game_salt.clone());
-
-        // Create dealt cards
-        let dealt_cards = array![card(0, 14), card(1, 13), card(2, 12)];
-
-        // The validation expects hands.len() == game_proofs.len() / 2
-        // So for 1 hand, we need 2 game proofs
-        let mut game_proofs: Array<Array<felt252>> = array![];
-        let mut i: u64 = 0;
-        while i != 2 {
-            game_proofs.append(merkle_state.generate_proof_v2(i.into()));
-            i += 1;
-        };
-
-        // For 1 hand, we need 2 dealt card proofs
-        let mut dealt_card_proofs: Array<Array<felt252>> = array![];
-        let mut i: u64 = 0;
-        while i != 2 {
-            dealt_card_proofs.append(merkle_state.generate_proof_v2(i.into()));
-            i += 1;
-        };
-
-        let hand = Hand { player: player_address, cards: dealt_cards };
-        let hands = array![hand];
-
-        let signature_r = array![0x505150549b4024a7804bdfd846a480208c69ab04c82cb6911628470945861b];
-        let signature_s = array![0x309fbfd5c149a63cd8842f4994f080070f795312c08164270904126e94c0a7b];
-        let signature_y_parity = array![true];
-        let nonce = 0;
-
-        (
-            game_id,
-            hands,
-            game_proofs,
-            dealt_card_proofs,
-            deck,
-            game_salt,
-            dealt_card_salt,
-            signature_r,
-            signature_s,
-            signature_y_parity,
-            nonce,
-        )
-    }
-
->>>>>>> b891e9a (added comprehensive showdown test)
-    #[test]
-    fn test_showdown_valid_case() {
         // [Setup]
         let contracts = array![CoreContract::Actions];
         let (mut world, systems) = deploy_contracts(contracts);
         mock_poker_game(ref world);
 
-<<<<<<< HEAD
         // Set up game with bet_spacing requirement (default is small_blind = 10)
         let game: Game = world.read_model(1);
         let bet_spacing = game.params.bet_spacing; // Default is 20
@@ -759,54 +661,11 @@ pub mod tests {
     // @kaylahray Community dealing tests - Testing community card dealing functionality
     #[test]
     fn test_community_dealing_after_betting_round() {
-=======
-        // Setup game state for showdown
-        let (
-            game_id,
-            hands,
-            game_proofs,
-            dealt_card_proofs,
-            deck,
-            game_salt,
-            dealt_card_salt,
-            signature_r,
-            signature_s,
-            signature_y_parity,
-            _,
-        ) = setup_valid_showdown(ref world);
-
-        // [Execute]
-        systems
-            .actions
-            .showdown(
-                game_id,
-                hands,
-                game_proofs,
-                dealt_card_proofs,
-                deck,
-                game_salt,
-                dealt_card_salt,
-                signature_r,
-                signature_s,
-                signature_y_parity,
-                0,
-            );
-
-        // [Assert]
-        let updated_game: Game = world.read_model(game_id);
-        assert(updated_game.nonce == 1, 'Nonce incremented');
-    }
-
-    #[test]
-    #[should_panic(expected: ('INVALID NONCE', 'ENTRYPOINT_FAILED'))]
-    fn test_showdown_replay_attack_invalid_nonce() {
->>>>>>> b891e9a (added comprehensive showdown test)
         // [Setup]
         let contracts = array![CoreContract::Actions];
         let (mut world, systems) = deploy_contracts(contracts);
         mock_poker_game(ref world);
 
-<<<<<<< HEAD
         // Complete a betting round
         feign_betting_round(ref world, systems.actions);
 
@@ -868,30 +727,6 @@ pub mod tests {
         let contracts = array![CoreContract::Actions];
         let (mut world, systems) = deploy_contracts(contracts);
         mock_poker_game(ref world);
-        mock_poker_game(ref world);
-
-        // [Setup State]
-        let mut game: Game = world.read_model(1);
-        game.current_bet = 1000;
-=======
-        // Setup basic showdown state
-        let game_id = 1;
-        let mut game: Game = world.read_model(game_id);
-        game.showdown = true;
-        game.round_in_progress = true;
-        game
-            .community_cards =
-                array![card(0, 14), card(1, 13), card(2, 12), card(3, 11), card(0, 10)];
-        game.nonce = 0;
->>>>>>> b891e9a (added comprehensive showdown test)
-        world.write_model(@game);
-
-        let player_address = SHOWODWN_PLAYER1();
-        let mut player: Player = world.read_model(player_address);
-        player.in_round = true;
-        player.locked = (true, game_id);
-        player.pub_key = 0x20c29f1c98f3320d56f01c13372c923123c35828bce54f2153aa1cfe61c44f2;
-        world.write_model(@player);
 
         // Complete a betting round
         feign_betting_round(ref world, systems.actions);
@@ -983,31 +818,168 @@ pub mod tests {
         assert!(game_after_betting.community_dealing, "Community dealing should be enabled");
     }
 
-    // [Mocks]
-    // Default mock usage for legacy tests
-    pub fn mock_poker_game(ref world: WorldStorage) {
-        let player_1 = mock_player(
-            PLAYER_1(), 'dub_zn', 2000, 0, 1, (true, 1), false, true, (0, 0),
-        );
-        let player_2 = mock_player(
-            PLAYER_2(), 'Birdmannn', 5000, 0, 1, (true, 1), false, true, (0, 0),
-        );
-        let player_3 = mock_player(
-            PLAYER_3(), 'chiscookeke11', 5000, 0, 1, (true, 1), false, true, (0, 0),
-        );
-        mock_poker_game_flex(
-            ref world,
-            true, // in_progress
-            false, // has_ended
-            1, // current_round
-            true, // round_in_progress
-            2, // current_player_count
-            array![PLAYER_1(), PLAYER_2(), PLAYER_3()],
-            Option::Some(PLAYER_1()),
-            array![],
-            0,
-            array![player_1, player_2, player_3],
-        );
+    fn card(suit: u8, value: u16) -> Card {
+        Card { suit, value }
+    }
+
+    // @truthixify - Comprehensive showdown function tests
+
+    /// Helper function to create a valid showdown setup with proper signatures
+    fn setup_valid_showdown(
+        ref world: WorldStorage,
+    ) -> (
+        u64, // game_id
+        Array<Hand>, // hands
+        Array<Array<felt252>>, // game_proofs
+        Array<Array<felt252>>, // dealt_card_proofs
+        Deck, // deck
+        Array<felt252>, // game_salt
+        Array<felt252>, // dealt_card_salt
+        Array<felt252>, // signature_r
+        Array<felt252>, // signature_s
+        Array<bool>, // signature_y_parity
+        u64 // nonce
+    ) {
+        // Setup game state for showdown
+        let game_id = 1;
+        let mut game: Game = world.read_model(game_id);
+        game.showdown = true;
+        game.round_in_progress = true;
+        game
+            .community_cards =
+                array![card(0, 14), card(1, 13), card(2, 12), card(3, 11), card(0, 10)];
+        game.nonce = 0;
+        world.write_model(@game);
+
+        // Setup player
+        let player_address = SHOWODWN_PLAYER1();
+        let mut player: Player = world.read_model(player_address);
+        player.in_round = true;
+        player.locked = (true, game_id);
+        player.pub_key = 0x20c29f1c98f3320d56f01c13372c923123c35828bce54f2153aa1cfe61c44f2;
+        world.write_model(@player);
+
+        // Create test data
+        let mut deck: Deck = Deck { id: 1, cards: array![] };
+        deck.new_deck();
+
+        let game_salt = array!['Salt1', 'Salt2', 'Salt3'];
+        let dealt_card_salt = array!['DSalt1', 'DSalt2', 'DSalt3'];
+        let mut merkle_state = MerkleTrait::new(deck.cards.clone(), game_salt.clone());
+
+        // Create dealt cards
+        let dealt_cards = array![card(0, 14), card(1, 13), card(2, 12)];
+
+        // The validation expects hands.len() == game_proofs.len() / 2
+        // So for 1 hand, we need 2 game proofs
+        let mut game_proofs: Array<Array<felt252>> = array![];
+        let mut i: u64 = 0;
+        while i != 2 {
+            game_proofs.append(merkle_state.generate_proof_v2(i.into()));
+            i += 1;
+        };
+
+        // For 1 hand, we need 2 dealt card proofs
+        let mut dealt_card_proofs: Array<Array<felt252>> = array![];
+        let mut i: u64 = 0;
+        while i != 2 {
+            dealt_card_proofs.append(merkle_state.generate_proof_v2(i.into()));
+            i += 1;
+        };
+
+        let hand = Hand { player: player_address, cards: dealt_cards };
+        let hands = array![hand];
+
+        let signature_r = array![0x505150549b4024a7804bdfd846a480208c69ab04c82cb6911628470945861b];
+        let signature_s = array![0x309fbfd5c149a63cd8842f4994f080070f795312c08164270904126e94c0a7b];
+        let signature_y_parity = array![true];
+        let nonce = 0;
+
+        (
+            game_id,
+            hands,
+            game_proofs,
+            dealt_card_proofs,
+            deck,
+            game_salt,
+            dealt_card_salt,
+            signature_r,
+            signature_s,
+            signature_y_parity,
+            nonce,
+        )
+    }
+
+    #[test]
+    fn test_showdown_valid_case() {
+        // [Setup]
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+        mock_poker_game(ref world);
+
+        // Setup game state for showdown
+        let (
+            game_id,
+            hands,
+            game_proofs,
+            dealt_card_proofs,
+            deck,
+            game_salt,
+            dealt_card_salt,
+            signature_r,
+            signature_s,
+            signature_y_parity,
+            _,
+        ) = setup_valid_showdown(ref world);
+
+        // [Execute]
+        systems
+            .actions
+            .showdown(
+                game_id,
+                hands,
+                game_proofs,
+                dealt_card_proofs,
+                deck,
+                game_salt,
+                dealt_card_salt,
+                signature_r,
+                signature_s,
+                signature_y_parity,
+                0,
+            );
+
+        // [Assert]
+        let updated_game: Game = world.read_model(game_id);
+        assert(updated_game.nonce == 1, 'Nonce incremented');
+    }
+
+    #[test]
+    #[should_panic(expected: ('INVALID NONCE', 'ENTRYPOINT_FAILED'))]
+    fn test_showdown_replay_attack_invalid_nonce() {
+        // [Setup]
+        let contracts = array![CoreContract::Actions];
+        let (mut world, systems) = deploy_contracts(contracts);
+        mock_poker_game(ref world);
+
+        // Setup basic showdown state
+        let game_id = 1;
+        let mut game: Game = world.read_model(game_id);
+        game.showdown = true;
+        game.round_in_progress = true;
+        game
+            .community_cards =
+                array![card(0, 14), card(1, 13), card(2, 12), card(3, 11), card(0, 10)];
+        game.nonce = 0;
+        world.write_model(@game);
+
+        let player_address = SHOWODWN_PLAYER1();
+        let mut player: Player = world.read_model(player_address);
+        player.in_round = true;
+        player.locked = (true, game_id);
+        player.pub_key = 0x20c29f1c98f3320d56f01c13372c923123c35828bce54f2153aa1cfe61c44f2;
+        world.write_model(@player);
+
         let mut deck: Deck = Deck { id: 1, cards: array![] };
         deck.new_deck();
 

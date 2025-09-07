@@ -733,7 +733,6 @@ pub mod tests {
 
         // Verify betting round is complete and reset has occurred
         let game_after_betting: Game = world.read_model(1);
-        println!("highes staker: {:?}", game_after_betting.highest_staker);
         assert!(game_after_betting.highest_staker.is_none(), "Betting round should be complete");
         assert_eq!(game_after_betting.current_bet, 0, "Current bet should be reset");
         assert!(game_after_betting.community_dealing, "Community dealing should be enabled");
@@ -851,10 +850,7 @@ pub mod tests {
             signature_s,
             signature_y_parity,
             _,
-        ) =
-            setup_valid_showdown(
-            ref world,
-        );
+        ) = setup_valid_showdown(ref world);
 
         // [Execute]
         systems
@@ -1392,7 +1388,7 @@ pub mod tests {
             Option::Some(PLAYER_1()),
             array![],
             0,
-            array![player_1, player_2, player_3, showdown_player1, showdown_player2],
+            array![player_1, player_2, player_3],
         );
     }
 }

@@ -850,7 +850,10 @@ pub mod tests {
             signature_s,
             signature_y_parity,
             _,
-        ) = setup_valid_showdown(ref world);
+        ) =
+            setup_valid_showdown(
+            ref world,
+        );
 
         // [Execute]
         systems
@@ -1371,12 +1374,7 @@ pub mod tests {
         let player_3 = mock_player(
             PLAYER_3(), 'chiscookeke11', 5000, 0, 1, (true, 1), false, true, (0, 0),
         );
-        let showdown_player1 = mock_player(
-            SHOWODWN_PLAYER1(), 'bourbaki', 5000, 0, 1, (true, 1), false, true, (0, 0),
-        );
-        let showdown_player2 = mock_player(
-            SHOWODWN_PLAYER2(), 'bourbaki', 5000, 0, 1, (true, 1), false, true, (0, 0),
-        );
+
         mock_poker_game_flex(
             ref world,
             true, // in_progress

@@ -1,6 +1,5 @@
 #[cfg(test)]
 pub mod tests {
-pub mod tests {
     use dojo::event::EventStorageTest;
     use dojo_cairo_test::WorldStorageTestTrait;
     use dojo::model::{ModelStorage, ModelValueStorage, ModelStorageTest};
@@ -8,13 +7,7 @@ pub mod tests {
     use dojo_cairo_test::{
         spawn_test_world, NamespaceDef, TestResource, ContractDefTrait, ContractDef,
     };
-<<<<<<< HEAD
-    use poker::models::game::{Game, GameTrait, GameParams, ShowdownType};
-    use poker::models::game::{Game, GameTrait, GameParams, ShowdownType};
-=======
     use poker::models::game::{Game, GameTrait, GameParams, ShowdownType, Salts};
->>>>>>> b891e9a (added comprehensive showdown test)
-    use poker::models::card::{Card, Suits, Royals, CardTrait};
     use poker::models::deck::Deck;
     use poker::models::hand::Hand;
     use poker::traits::deck::DeckTrait;
@@ -25,21 +18,17 @@ pub mod tests {
     use poker::systems::interface::{IActionsDispatcher, IActionsDispatcherTrait};
     use poker::tests::setup::setup::{CoreContract, deploy_contracts, Systems};
     use poker::utils::game::{MerkleState, MerkleTrait};
-    use poker::tests::setup::setup::{CoreContract, deploy_contracts};
     use starknet::ContractAddress;
     use starknet::testing::{set_account_contract_address, set_contract_address};
 
-    pub fn PLAYER_1() -> ContractAddress {
     pub fn PLAYER_1() -> ContractAddress {
         starknet::contract_address_const::<'PLAYER_1'>()
     }
 
     pub fn PLAYER_2() -> ContractAddress {
-    pub fn PLAYER_2() -> ContractAddress {
         starknet::contract_address_const::<'PLAYER_2'>()
     }
 
-    pub fn PLAYER_3() -> ContractAddress {
     pub fn PLAYER_3() -> ContractAddress {
         starknet::contract_address_const::<'PLAYER_3'>()
     }
@@ -58,75 +47,6 @@ pub mod tests {
         starknet::contract_address_const::<
             0x4ae6af1665641e0745203aeb5bbd24674094d56914618aaae131402de9f81de,
         >()
-    }
-
-    // Flexible player mock
-    pub fn mock_player(
-        id: ContractAddress,
-        alias: felt252,
-        chips: u256,
-        current_bet: u256,
-        total_rounds: u64,
-        locked: (bool, u64),
-        is_dealer: bool,
-        in_round: bool,
-        out: (u64, u64),
-    ) -> Player {
-        let mut player: Player = Default::default();
-        player.id = id;
-        player.alias = alias;
-        player.chips = chips;
-        player.current_bet = current_bet;
-        player.total_rounds = total_rounds;
-        player.locked = locked;
-        player.is_dealer = is_dealer;
-        player.in_round = in_round;
-        player.out = out;
-        player.locked_chips = 0;
-        player.eligible_pots = 1;
-
-        player
-    }
-
-    // Flexible game mock
-    pub fn mock_poker_game_flex(
-        ref world: WorldStorage,
-        in_progress: bool,
-        has_ended: bool,
-        current_round: u8,
-        round_in_progress: bool,
-        current_player_count: u32,
-        players: Array<ContractAddress>,
-        next_player: Option<ContractAddress>,
-        community_cards: Array<Card>,
-        current_bet: u256,
-        player_states: Array<Player>,
-    ) {
-        let temp_player_states = player_states.span();
-        let mut player_states = array![];
-        for player in temp_player_states {
-            player_states.append(player);
-        };
-
-        let mut game: Game = Default::default();
-        game.id = 1;
-        game.in_progress = in_progress;
-        game.has_ended = has_ended;
-        game.current_round = current_round;
-        game.round_in_progress = round_in_progress;
-        game.current_player_count = current_player_count;
-        game.players = players;
-        game.next_player = next_player;
-        game.pots = array![0];
-        game.current_bet = current_bet;
-        game.params = get_default_game_params();
-        game.showdown = true;
-        world.write_model(@game);
-        world.write_models(player_states.span());
-    }
-
-    pub fn PLAYER_4() -> ContractAddress {
-        starknet::contract_address_const::<'PLAYER_4'>()
     }
 
     // Flexible player mock
@@ -813,6 +733,7 @@ pub mod tests {
 
         // Verify betting round is complete and reset has occurred
         let game_after_betting: Game = world.read_model(1);
+        println!("highes staker: {:?}", game_after_betting.highest_staker);
         assert!(game_after_betting.highest_staker.is_none(), "Betting round should be complete");
         assert_eq!(game_after_betting.current_bet, 0, "Current bet should be reset");
         assert!(game_after_betting.community_dealing, "Community dealing should be enabled");
@@ -930,7 +851,10 @@ pub mod tests {
             signature_s,
             signature_y_parity,
             _,
-        ) = setup_valid_showdown(ref world);
+        ) =
+            setup_valid_showdown(
+            ref world,
+        );
 
         // [Execute]
         systems

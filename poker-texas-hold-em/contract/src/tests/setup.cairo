@@ -8,24 +8,14 @@ mod setup {
     use starknet::testing::{set_account_contract_address, set_contract_address};
     use poker::models::base::{
         m_Id, e_GameInitialized, e_CardDealt, e_HandCreated, e_HandResolved, e_RoundResolved,
-<<<<<<< HEAD
-        e_PlayerJoined, e_CommunityCardDealt,
+        e_PlayerJoined, e_CommunityCardDealt, e_RoundStarted, e_RoundEnded, e_PlayerLeft,
+        e_GameConcluded,
     };
     use poker::models::deck::m_Deck;
-    use poker::models::game::m_Game;
-    use poker::models::hand::m_Hand;
-    use poker::models::player::m_Player;
     use core::zeroable::Zeroable;
-=======
-        e_PlayerJoined, e_PlayerLeft, e_GameConcluded, e_RoundStarted, e_RoundEnded,
-        e_CommunityCardDealt,
-    };
-    use poker::models::deck::m_Deck;
     use poker::models::game::{m_Game, m_Salts, m_GameStats};
     use poker::models::hand::{m_Hand, m_Proofs};
     use poker::models::player::{m_Player, m_PlayerStats};
->>>>>>> b891e9a (added comprehensive showdown test)
-
 
     #[starknet::interface]
     trait IDojoInit<ContractState> {
@@ -122,7 +112,6 @@ mod setup {
             TestResource::Event(e_RoundEnded::TEST_CLASS_HASH),
             TestResource::Event(e_CommunityCardDealt::TEST_CLASS_HASH),
             TestResource::Event(e_RoundResolved::TEST_CLASS_HASH),
-            TestResource::Event(e_CommunityCardDealt::TEST_CLASS_HASH),
         ]
     }
 }

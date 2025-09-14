@@ -8,14 +8,14 @@ mod setup {
     use starknet::testing::{set_account_contract_address, set_contract_address};
     use poker::models::base::{
         m_Id, e_GameInitialized, e_CardDealt, e_HandCreated, e_HandResolved, e_RoundResolved,
-        e_PlayerJoined, e_CommunityCardDealt,
+        e_PlayerJoined, e_CommunityCardDealt, e_RoundStarted, e_RoundEnded, e_PlayerLeft,
+        e_GameConcluded,
     };
     use poker::models::deck::m_Deck;
-    use poker::models::game::m_Game;
-    use poker::models::hand::m_Hand;
-    use poker::models::player::m_Player;
     use core::zeroable::Zeroable;
-
+    use poker::models::game::{m_Game, m_Salts, m_GameStats};
+    use poker::models::hand::{m_Hand, m_Proofs};
+    use poker::models::player::{m_Player, m_PlayerStats};
 
     #[starknet::interface]
     trait IDojoInit<ContractState> {
@@ -94,16 +94,24 @@ mod setup {
             TestResource::Model(m_Id::TEST_CLASS_HASH),
             TestResource::Model(m_Deck::TEST_CLASS_HASH),
             TestResource::Model(m_Hand::TEST_CLASS_HASH),
+            TestResource::Model(m_Proofs::TEST_CLASS_HASH),
             TestResource::Model(m_Game::TEST_CLASS_HASH),
+            TestResource::Model(m_GameStats::TEST_CLASS_HASH),
             TestResource::Model(m_Player::TEST_CLASS_HASH),
+            TestResource::Model(m_PlayerStats::TEST_CLASS_HASH),
+            TestResource::Model(m_Salts::TEST_CLASS_HASH),
             // Events
             TestResource::Event(e_GameInitialized::TEST_CLASS_HASH),
             TestResource::Event(e_CardDealt::TEST_CLASS_HASH),
             TestResource::Event(e_HandCreated::TEST_CLASS_HASH),
             TestResource::Event(e_HandResolved::TEST_CLASS_HASH),
             TestResource::Event(e_PlayerJoined::TEST_CLASS_HASH),
-            TestResource::Event(e_RoundResolved::TEST_CLASS_HASH),
+            TestResource::Event(e_PlayerLeft::TEST_CLASS_HASH),
+            TestResource::Event(e_GameConcluded::TEST_CLASS_HASH),
+            TestResource::Event(e_RoundStarted::TEST_CLASS_HASH),
+            TestResource::Event(e_RoundEnded::TEST_CLASS_HASH),
             TestResource::Event(e_CommunityCardDealt::TEST_CLASS_HASH),
+            TestResource::Event(e_RoundResolved::TEST_CLASS_HASH),
         ]
     }
 }

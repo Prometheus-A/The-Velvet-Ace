@@ -31,13 +31,10 @@ jobs:
       - name: Install Dojo using dojoup
         run: |
           curl -L https://install.dojoengine.org | bash
+          source ~/.bashrc
+          ~/.dojo/bin/dojoup install 1.5.0
           echo "$HOME/.dojo/bin" >> $GITHUB_PATH
         shell: bash
-
-      - name: Install Dojo toolchain
-        run: |
-          source ~/.bashrc
-          dojoup install 1.5.0
 
       - name: Build contracts
         run: |

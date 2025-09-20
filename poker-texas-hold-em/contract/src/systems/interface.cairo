@@ -75,4 +75,12 @@ trait IActions<TContractState> {
     fn get_game(self: @TContractState, game_id: u64) -> Game;
     fn set_alias(self: @TContractState, alias: felt252);
     fn resolve_round(ref self: TContractState, game_id: u64);
+
+    // Pot splitting function for testing
+    fn split_pots_with_kickers(
+        ref self: TContractState,
+        game_id: u64,
+        winning_hands: Array<Hand>,
+        kicker_cards: Array<Card>,
+    );
 }

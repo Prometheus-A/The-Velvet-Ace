@@ -10,7 +10,9 @@ pub mod actions {
     use poker::models::base::{
         CardDealt, CommunityCardDealt, GameConcluded, GameErrors, GameInitialized, HandCreated,
         HandResolved, Id, PlayerJoined, PlayerLeft, RoundEnded, RoundResolved, RoundStarted,
+        CasinoCollection, PotSplit,
     };
+    use poker::models::casino::CasinoFunds;
     use poker::models::card::{Card, CardTrait};
     use poker::models::deck::{Deck, DeckTrait};
     use poker::models::game::{
@@ -565,6 +567,20 @@ pub mod actions {
         fn resolve_round(
             ref self: ContractState, game_id: u64,
         ) { // self._resolve_round_v2(game_id);
+        }
+
+        /// @truthixify
+        /// Public interface for pot splitting (for testing purposes)
+        fn split_pots_with_kickers(
+            ref self: ContractState,
+            game_id: u64,
+            winning_hands: Array<Hand>,
+            kicker_cards: Array<Card>,
+        ) {
+            let mut world = self.world_default();
+            let mut game: Game = world.read_model(game_id);
+            self._split_pots_with_kickers_internal(ref game, winning_hands, kicker_cards.span());
+            world.write_model(@game);
         }
     }
 
@@ -1138,11 +1154,25 @@ pub mod actions {
                 }
             };
 
-            let (winning_hands, _, _) = self._extract_winner(game_id, community_cards, hands);
-            let mut winners = array![];
+            let (winning_hands, _, kicker_cards) = self
+                ._extract_winner(game_id, community_cards, hands);
+
+            // Convert winning hands span to array for pot splitting
+            let mut winning_hands_array: Array<Hand> = array![];
             for i in 0..winning_hands.len() {
-                let winner = winning_hands.at(i);
-                winners.append(*winner.player);
+                winning_hands_array.append(winning_hands.at(i).clone());
+            };
+
+            // Split pots based on winners and kicker cards
+            self
+                ._split_pots_with_kickers_internal(
+                    ref game, winning_hands_array.clone(), kicker_cards,
+                );
+
+            let mut winners = array![];
+            for i in 0..winning_hands_array.len() {
+                let winner = winning_hands_array.at(i);
+                winners.append(winner.player.clone());
             };
 
             let mut tpot = 0; // total pot
@@ -1411,6 +1441,395 @@ pub mod actions {
             let game_params = game.params;
 
             HandTrait::compare_hands(hands, community_cards, game_params)
+        }
+
+        /// @truthixify
+        /// Splits pots fairly between winning hands based on kicker cards and pot eligibility
+        ///
+        /// This function handles complex pot splitting scenarios including:
+        /// - Multiple pots (main pot vs side pots)
+        /// - Players eligible for different pots based on their all-in amounts
+        /// - Kicker-based splitting when players have equal hand ranks
+        /// - Casino cut collection (20%) from resolved hands that don't win the game
+        ///
+        /// # Arguments
+        /// * `game` - Mutable reference to the game state
+        /// * `winning_hands` - Array of hands that won (from compare_hands)
+        /// * `kicker_cards` - Kicker cards used for tie-breaking (from compare_hands)
+        ///
+        /// # Logic Flow
+        /// 1. For each pot, determine which players are eligible
+        /// 2. Among eligible players, find winners for that specific pot
+        /// 3. Split pot evenly among winners if they have identical hands+kickers
+        /// 4. Award entire pot to single winner if kickers differentiate
+        /// 5. Collect 20% casino cut from non-winning resolved hands
+        fn _split_pots_with_kickers_internal(
+            ref self: ContractState,
+            ref game: Game,
+            winning_hands: Array<Hand>,
+            kicker_cards: Span<Card>,
+        ) {
+            let mut _world = self.world_default();
+
+            // Validate parameters before processing
+            self._validate_pot_split_params(@game, @winning_hands);
+
+            // If no winners (kicker_split=false scenario), split all pots evenly among all players
+            if winning_hands.len() == 0 {
+                self._split_pots_no_winners(ref game);
+                return;
+            }
+
+            // Process each pot individually
+            let mut pot_index = 0;
+            while pot_index < game.pots.len() {
+                let pot_amount = *game.pots.at(pot_index);
+                if pot_amount == 0 {
+                    pot_index += 1;
+                    continue;
+                }
+
+                // Find players eligible for this pot
+                let eligible_players = self._get_eligible_players_for_pot(game.id, pot_index);
+
+                // Find winners among eligible players
+                let pot_winners = self
+                    ._filter_winners_for_pot(winning_hands.clone(), eligible_players.clone());
+
+                if pot_winners.len() == 0 {
+                    // No winners eligible for this pot - split among all eligible players
+                    self._split_pot_among_eligible(ref game, pot_index, eligible_players);
+                } else if pot_winners.len() == 1 {
+                    // Single winner takes the entire pot
+                    self._award_pot_to_winner(ref game, pot_index, pot_winners.at(0));
+                } else {
+                    // Multiple winners - check if kickers differentiate or if it's a true tie
+                    if kicker_cards.len() > 0 {
+                        // Kickers exist, so there should be a single winner
+                        // Award to the first winner (compare_hands already sorted by kicker
+                        // strength)
+                        self._award_pot_to_winner(ref game, pot_index, pot_winners.at(0));
+                    } else {
+                        // Perfect tie - split evenly among winners
+                        self._split_pot_among_winners(ref game, pot_index, pot_winners);
+                    }
+                }
+
+                pot_index += 1;
+            };
+
+            // Collect casino cut from non-winning players (20% of their resolved hands)
+            self._collect_casino_cut(ref game, winning_hands.clone());
+        }
+
+        /// Helper function to handle pot splitting when no winners are determined
+        /// This happens when kicker_split=false and hands are tied
+        fn _split_pots_no_winners(ref self: ContractState, ref game: Game) {
+            let mut _world = self.world_default();
+            let mut pot_index = 0;
+
+            while pot_index < game.pots.len() {
+                let pot_amount = *game.pots.at(pot_index);
+                if pot_amount == 0 {
+                    pot_index += 1;
+                    continue;
+                }
+
+                let eligible_players = self._get_eligible_players_for_pot(game.id, pot_index);
+                self._split_pot_among_eligible(ref game, pot_index, eligible_players);
+                pot_index += 1;
+            }
+        }
+
+        /// Get all players eligible for a specific pot based on their eligible_pots field
+        fn _get_eligible_players_for_pot(
+            ref self: ContractState, game_id: u64, pot_index: u32,
+        ) -> Array<ContractAddress> {
+            let mut world = self.world_default();
+            let game: Game = world.read_model(game_id);
+            let mut eligible_players: Array<ContractAddress> = array![];
+
+            for player_addr in game.players.span() {
+                let player: Player = world.read_model(*player_addr);
+                if player.is_in_game(game_id) && player.in_round {
+                    // Player is eligible if their eligible_pots count includes this pot
+                    if player.eligible_pots.into() > pot_index {
+                        eligible_players.append(*player_addr);
+                    }
+                }
+            };
+
+            eligible_players
+        }
+
+        /// Filter winning hands to only include those eligible for the specific pot
+        fn _filter_winners_for_pot(
+            ref self: ContractState,
+            winning_hands: Array<Hand>,
+            eligible_players: Array<ContractAddress>,
+        ) -> Array<ContractAddress> {
+            let mut pot_winners: Array<ContractAddress> = array![];
+
+            for hand in winning_hands.span() {
+                for eligible_player in eligible_players.span() {
+                    if hand.player == eligible_player {
+                        pot_winners.append(*hand.player);
+                        break;
+                    }
+                }
+            };
+
+            pot_winners
+        }
+
+        /// Split a pot evenly among eligible players
+        fn _split_pot_among_eligible(
+            ref self: ContractState,
+            ref game: Game,
+            pot_index: u32,
+            eligible_players: Array<ContractAddress>,
+        ) {
+            if eligible_players.len() == 0 {
+                return;
+            }
+
+            let mut world = self.world_default();
+            let pot_amount = *game.pots.at(pot_index);
+            let share_per_player = pot_amount / eligible_players.len().into();
+            let remainder = pot_amount % eligible_players.len().into();
+
+            let mut winners_array: Array<ContractAddress> = array![];
+            let mut amounts_array: Array<u256> = array![];
+
+            // Distribute shares
+            let mut i = 0;
+            while i < eligible_players.len() {
+                let player_addr = *eligible_players.at(i);
+                let mut player: Player = world.read_model(player_addr);
+
+                let mut share = share_per_player;
+                // Give remainder to first player
+                if i == 0 {
+                    share += remainder;
+                }
+
+                player.chips += share;
+                world.write_model(@player);
+
+                winners_array.append(player_addr);
+                amounts_array.append(share);
+                i += 1;
+            };
+
+            // Reset pot to 0
+            self._update_pot_amount(ref game, pot_index, 0);
+
+            // Emit pot split event
+            let pot_split_event = PotSplit {
+                game_id: game.id,
+                pot_index,
+                winners: winners_array,
+                amounts: amounts_array,
+                total_pot: pot_amount,
+            };
+            world.emit_event(@pot_split_event);
+        }
+
+        /// Award entire pot to a single winner
+        fn _award_pot_to_winner(
+            ref self: ContractState, ref game: Game, pot_index: u32, winner_addr: @ContractAddress,
+        ) {
+            let mut world = self.world_default();
+            let pot_amount = *game.pots.at(pot_index);
+
+            let mut winner: Player = world.read_model(*winner_addr);
+            winner.chips += pot_amount;
+            world.write_model(@winner);
+
+            // Reset pot to 0
+            self._update_pot_amount(ref game, pot_index, 0);
+
+            // Emit pot split event
+            let pot_split_event = PotSplit {
+                game_id: game.id,
+                pot_index,
+                winners: array![*winner_addr],
+                amounts: array![pot_amount],
+                total_pot: pot_amount,
+            };
+            world.emit_event(@pot_split_event);
+        }
+
+        /// Split pot evenly among multiple winners
+        fn _split_pot_among_winners(
+            ref self: ContractState,
+            ref game: Game,
+            pot_index: u32,
+            winners: Array<ContractAddress>,
+        ) {
+            if winners.len() == 0 {
+                return;
+            }
+
+            let mut world = self.world_default();
+            let pot_amount = *game.pots.at(pot_index);
+            let share_per_winner = pot_amount / winners.len().into();
+            let remainder = pot_amount % winners.len().into();
+
+            let mut amounts_array: Array<u256> = array![];
+
+            // Distribute shares
+            let mut i = 0;
+            while i < winners.len() {
+                let winner_addr = *winners.at(i);
+                let mut winner: Player = world.read_model(winner_addr);
+
+                let mut share = share_per_winner;
+                // Give remainder to first winner
+                if i == 0 {
+                    share += remainder;
+                }
+
+                winner.chips += share;
+                world.write_model(@winner);
+                amounts_array.append(share);
+                i += 1;
+            };
+
+            // Reset pot to 0
+            self._update_pot_amount(ref game, pot_index, 0);
+
+            // Emit pot split event
+            let pot_split_event = PotSplit {
+                game_id: game.id,
+                pot_index,
+                winners: winners.clone(),
+                amounts: amounts_array,
+                total_pot: pot_amount,
+            };
+            world.emit_event(@pot_split_event);
+        }
+
+        /// Collect 20% casino cut from players who resolved hands but didn't win
+        fn _collect_casino_cut(
+            ref self: ContractState, ref game: Game, winning_hands: Array<Hand>,
+        ) {
+            let mut world = self.world_default();
+            let mut total_collected = 0;
+
+            // Get all players who participated in the round
+            for player_addr in game.players.span() {
+                let mut player: Player = world.read_model(*player_addr);
+
+                // Skip if player is not in game or didn't participate in round
+                if !player.is_in_game(game.id) || !player.in_round {
+                    continue;
+                }
+
+                // Check if player is a winner
+                let mut is_winner = false;
+                for winning_hand in winning_hands.span() {
+                    if winning_hand.player == player_addr {
+                        is_winner = true;
+                        break;
+                    }
+                };
+
+                // Collect cut only from non-winners who resolved hands
+                if !is_winner && player.current_bet > 0 {
+                    let cut_amount = self._calculate_casino_cut(player.current_bet);
+
+                    // Only collect if player has enough chips
+                    if player.chips >= cut_amount {
+                        player.chips -= cut_amount;
+                        total_collected += cut_amount;
+                        world.write_model(@player);
+
+                        // Emit casino collection event
+                        let collection_event = CasinoCollection {
+                            game_id: game.id,
+                            amount_collected: cut_amount,
+                            round: game.current_round.into(),
+                            from_player: *player_addr,
+                        };
+                        world.emit_event(@collection_event);
+                    }
+                }
+            };
+
+            // Update casino funds model
+            if total_collected > 0 {
+                let mut casino_funds: CasinoFunds = world.read_model(game.id);
+                casino_funds.total_collected += total_collected;
+                casino_funds.last_collection_round = game.current_round.into();
+                world.write_model(@casino_funds);
+            }
+        }
+
+        /// Helper to update a specific pot amount in the game
+        fn _update_pot_amount(
+            ref self: ContractState, ref game: Game, pot_index: u32, new_amount: u256,
+        ) {
+            let mut updated_pots: Array<u256> = array![];
+            let mut i = 0;
+
+            while i < game.pots.len() {
+                if i == pot_index {
+                    updated_pots.append(new_amount);
+                } else {
+                    updated_pots.append(*game.pots.at(i));
+                }
+                i += 1;
+            };
+
+            game.pots = updated_pots;
+        }
+
+        /// @truthixify
+        /// Reusable function to update player chips and emit events
+        /// Extracted to avoid code repetition across pot splitting functions
+        fn _update_player_chips_and_emit(
+            ref self: ContractState,
+            player_addr: ContractAddress,
+            amount: u256,
+            game_id: u64,
+            pot_index: u32,
+            total_pot: u256,
+        ) {
+            let mut _world = self.world_default();
+            let mut player: Player = _world.read_model(player_addr);
+            player.chips += amount;
+            _world.write_model(@player);
+        }
+
+        /// @truthixify
+        /// Reusable function to validate pot splitting parameters
+        /// Ensures game state is valid before attempting pot splits
+        fn _validate_pot_split_params(
+            ref self: ContractState, game: @Game, winning_hands: @Array<Hand>,
+        ) {
+            assert(game.pots.len() > 0, 'No pots to split');
+            assert(game.players.len() > 0, 'No players in game');
+
+            // Validate all winning hands belong to players in the game
+            for winning_hand in winning_hands.span() {
+                let mut found = false;
+                for player_addr in game.players.span() {
+                    if winning_hand.player == player_addr {
+                        found = true;
+                        break;
+                    }
+                };
+                assert(found, 'Winner not in game');
+            }
+        }
+
+        /// @truthixify
+        /// Reusable function to calculate casino cut amount
+        /// Centralizes the 20% cut calculation logic
+        fn _calculate_casino_cut(ref self: ContractState, current_bet: u256) -> u256 {
+            let casino_cut_percentage = 20; // 20%
+            (current_bet * casino_cut_percentage.into()) / 100
         }
     }
 }

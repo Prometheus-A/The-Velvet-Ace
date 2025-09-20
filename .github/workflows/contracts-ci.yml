@@ -31,8 +31,8 @@ jobs:
       - name: Install Dojo using dojoup
         run: |
           curl -L https://install.dojoengine.org | bash
-          source ~/.bashrc
-          ~/.dojo/bin/dojoup install 1.5.0
+          export PATH="$HOME/.dojo/bin:$PATH"
+          dojoup install 1.5.0
           echo "$HOME/.dojo/bin" >> $GITHUB_PATH
         shell: bash
 

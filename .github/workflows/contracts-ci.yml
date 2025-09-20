@@ -36,6 +36,15 @@ jobs:
           echo "$HOME/.config/.dojo/bin" >> $GITHUB_PATH
         shell: bash
 
+      - name: Install Starknet Foundry for tokens
+        uses: asdf-vm/actions/setup@v2
+
+      - name: Install Starknet Foundry
+        run: |
+          asdf plugin add starknet-foundry
+          asdf install starknet-foundry 0.39.0
+          asdf global starknet-foundry 0.39.0
+
       - name: Build contracts
         run: |
           cd poker-texas-hold-em/contract

@@ -28,20 +28,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install asdf
-        uses: asdf-vm/actions/setup@v2
-
-      - name: Install plugins
+      - name: Install Dojo using dojoup
         run: |
-          asdf plugin add scarb
-          asdf install scarb 2.10.1
-          asdf global scarb 2.10.1
-          asdf plugin add dojo https://github.com/dojoengine/asdf-dojo
-          asdf install dojo 1.5.0 
-          asdf global dojo 1.5.0
-          asdf plugin add starknet-foundry
-          asdf install starknet-foundry 0.39.0
-          asdf global starknet-foundry 0.39.0
+          curl -L https://install.dojoengine.org | bash
+          echo "$HOME/.dojo/bin" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Install Dojo toolchain
+        run: |
+          source ~/.bashrc
+          dojoup install 1.5.0
 
       - name: Build contracts
         run: |

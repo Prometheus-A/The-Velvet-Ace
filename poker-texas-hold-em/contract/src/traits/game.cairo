@@ -62,7 +62,6 @@ pub impl GameImpl of GameTrait {
     fn append() {}
 }
 
-
 fn get_default_game_params() -> GameParams {
     GameParams {
         game_mode: Default::default(),

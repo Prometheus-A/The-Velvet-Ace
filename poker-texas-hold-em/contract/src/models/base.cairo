@@ -120,6 +120,27 @@ pub struct CommunityCardDealt {
     pub card: Card,
 }
 
+#[derive(Drop, Serde)]
+#[dojo::event]
+pub struct CasinoCollection {
+    #[key]
+    pub game_id: u64,
+    pub amount_collected: u256,
+    pub round: u64,
+    pub from_player: ContractAddress,
+}
+
+#[derive(Drop, Serde)]
+#[dojo::event]
+pub struct PotSplit {
+    #[key]
+    pub game_id: u64,
+    pub pot_index: u32,
+    pub winners: Array<ContractAddress>,
+    pub amounts: Array<u256>,
+    pub total_pot: u256,
+}
+
 /// MODEL
 
 #[derive(Serde, Copy, Drop, PartialEq)]

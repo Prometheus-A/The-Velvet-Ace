@@ -9,8 +9,9 @@ mod setup {
     use poker::models::base::{
         m_Id, e_GameInitialized, e_CardDealt, e_HandCreated, e_HandResolved, e_RoundResolved,
         e_PlayerJoined, e_CommunityCardDealt, e_RoundStarted, e_RoundEnded, e_PlayerLeft,
-        e_GameConcluded,
+        e_GameConcluded, e_CasinoCollection, e_PotSplit,
     };
+    use poker::models::casino::m_CasinoFunds;
     use poker::models::deck::m_Deck;
     use core::zeroable::Zeroable;
     use poker::models::game::{m_Game, m_Salts, m_GameStats};
@@ -100,6 +101,7 @@ mod setup {
             TestResource::Model(m_Player::TEST_CLASS_HASH),
             TestResource::Model(m_PlayerStats::TEST_CLASS_HASH),
             TestResource::Model(m_Salts::TEST_CLASS_HASH),
+            TestResource::Model(m_CasinoFunds::TEST_CLASS_HASH),
             // Events
             TestResource::Event(e_GameInitialized::TEST_CLASS_HASH),
             TestResource::Event(e_CardDealt::TEST_CLASS_HASH),
@@ -112,6 +114,8 @@ mod setup {
             TestResource::Event(e_RoundEnded::TEST_CLASS_HASH),
             TestResource::Event(e_CommunityCardDealt::TEST_CLASS_HASH),
             TestResource::Event(e_RoundResolved::TEST_CLASS_HASH),
+            TestResource::Event(e_CasinoCollection::TEST_CLASS_HASH),
+            TestResource::Event(e_PotSplit::TEST_CLASS_HASH),
         ]
     }
 }

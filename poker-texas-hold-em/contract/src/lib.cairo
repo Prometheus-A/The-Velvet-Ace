@@ -10,6 +10,7 @@ mod models {
     mod player;
     mod card;
     mod base;
+    mod casino;
 }
 
 mod traits {
@@ -36,4 +37,6 @@ mod tests {
     mod test_world;
     mod test_resolve_round;
     mod test_game_init;
+    mod test_pot_splitting;
+    mod test_pot_splitting_integration;
 }

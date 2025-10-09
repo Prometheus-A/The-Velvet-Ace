@@ -1511,7 +1511,7 @@ pub mod actions {
                         self._award_pot_to_winner(ref game, pot_index, pot_winners.at(0));
                     } else {
                         // Perfect tie - split evenly among winners
-                        self._split_pot_among_winners(ref game, pot_index, pot_winners);
+                        self._split_pot_among_eligible(ref game, pot_index, pot_winners);
                     }
                 }
 
@@ -1642,9 +1642,10 @@ pub mod actions {
             let mut world = self.world_default();
             let pot_amount = *game.pots.at(pot_index);
 
-            let mut winner: Player = world.read_model(*winner_addr);
-            winner.chips += pot_amount;
-            world.write_model(@winner);
+            let c = selector!("chips");
+            let key = Model::<Player>::ptr_from_keys(*winner_addr);
+            let winner_chips = world.read_member(key, c);
+            world.write_member(key, c, winner_chips + pot_amount);
 
             // Reset pot to 0
             self._update_pot_amount(ref game, pot_index, 0);
@@ -1655,56 +1656,6 @@ pub mod actions {
                 pot_index,
                 winners: array![*winner_addr],
                 amounts: array![pot_amount],
-                total_pot: pot_amount,
-            };
-            world.emit_event(@pot_split_event);
-        }
-
-        /// Split pot evenly among multiple winners
-        fn _split_pot_among_winners(
-            ref self: ContractState,
-            ref game: Game,
-            pot_index: u32,
-            winners: Array<ContractAddress>,
-        ) {
-            if winners.len() == 0 {
-                return;
-            }
-
-            let mut world = self.world_default();
-            let pot_amount = *game.pots.at(pot_index);
-            let share_per_winner = pot_amount / winners.len().into();
-            let remainder = pot_amount % winners.len().into();
-
-            let mut amounts_array: Array<u256> = array![];
-
-            // Distribute shares
-            let mut i = 0;
-            while i < winners.len() {
-                let winner_addr = *winners.at(i);
-                let mut winner: Player = world.read_model(winner_addr);
-
-                let mut share = share_per_winner;
-                // Give remainder to first winner
-                if i == 0 {
-                    share += remainder;
-                }
-
-                winner.chips += share;
-                world.write_model(@winner);
-                amounts_array.append(share);
-                i += 1;
-            };
-
-            // Reset pot to 0
-            self._update_pot_amount(ref game, pot_index, 0);
-
-            // Emit pot split event
-            let pot_split_event = PotSplit {
-                game_id: game.id,
-                pot_index,
-                winners: winners.clone(),
-                amounts: amounts_array,
                 total_pot: pot_amount,
             };
             world.emit_event(@pot_split_event);
@@ -1788,19 +1739,19 @@ pub mod actions {
         /// @truthixify
         /// Reusable function to update player chips and emit events
         /// Extracted to avoid code repetition across pot splitting functions
-        fn _update_player_chips_and_emit(
-            ref self: ContractState,
-            player_addr: ContractAddress,
-            amount: u256,
-            game_id: u64,
-            pot_index: u32,
-            total_pot: u256,
-        ) {
-            let mut _world = self.world_default();
-            let mut player: Player = _world.read_model(player_addr);
-            player.chips += amount;
-            _world.write_model(@player);
-        }
+        // fn _update_player_chips_and_emit(
+        //     ref self: ContractState,
+        //     player_addr: ContractAddress,
+        //     amount: u256,
+        //     game_id: u64,
+        //     pot_index: u32,
+        //     total_pot: u256,
+        // ) {
+        //     let mut _world = self.world_default();
+        //     let mut player: Player = _world.read_model(player_addr);
+        //     player.chips += amount;
+        //     _world.write_model(@player);
+        // }
 
         /// @truthixify
         /// Reusable function to validate pot splitting parameters
